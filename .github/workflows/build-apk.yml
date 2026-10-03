@@ -8,11 +8,13 @@ on:
 jobs:
   build-apk:
     name: Build Tauri Android APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
@@ -20,10 +22,15 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Install Android NDK & Build Tools
+      - name: Install Android NDK & SDK Components
         run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager --install "ndk;26.1.10909125" "build-tools;34.0.0" "platforms;android-34"
+          # Locate sdkmanager dynamically regardless of runner version
+          SDKMANAGER=$(find $ANDROID_SDK_ROOT/cmdline-tools -name sdkmanager -type f | head -n 1)
+          echo "Found sdkmanager at: $SDKMANAGER"
+
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" --install "ndk;26.1.10909125" "build-tools;34.0.0" "platforms;android-34"
+
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
 
@@ -33,7 +40,7 @@ jobs:
           targets: aarch64-linux-android
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
         with:
           version: 9
 
@@ -44,7 +51,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Build Next.js Static Assets
         run: pnpm --filter readest-app build
@@ -54,11 +61,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: --target aarch64-linux-android
+          args: --target aarch64-linux-android --debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ReadInfinity-aarch64-release
+          name: ReadInfinity-aarch64-debug
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
