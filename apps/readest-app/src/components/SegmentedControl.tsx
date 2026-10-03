@@ -4,9 +4,7 @@ import React from 'react';
 export interface SegmentedControlOption<T extends string | number> {
   value: T;
   label: React.ReactNode;
-  // Optional accessible label when `label` is a non-text node (icon, badge…).
   ariaLabel?: string;
-  // Per-option disable, in addition to the group-level `disabled` prop.
   disabled?: boolean;
 }
 
@@ -14,29 +12,13 @@ interface SegmentedControlProps<T extends string | number> {
   options: ReadonlyArray<SegmentedControlOption<T>>;
   value: T;
   onChange: (value: T) => void;
-  // Group-level accessible name (rendered as `aria-label` on the wrapper).
   ariaLabel?: string;
-  // Group-level disable. Per-option `disabled` is OR'd with this.
   disabled?: boolean;
   size?: 'sm' | 'md';
-  // Stretch segments to fill the container; otherwise they hug their content.
   fullWidth?: boolean;
   className?: string;
 }
 
-// iOS-style segmented control: a subtle track holds N equally-weighted
-// segments. The active one rises on top as a filled pill with a slight
-// shadow; inactive ones are flat, transparent, and slightly muted so the
-// group reads as a single control rather than a row of separate buttons.
-//
-// Generic over the value type so callers preserve number / string / enum
-// semantics:
-//
-//     <SegmentedControl<number>
-//       options={[{ value: 1, label: '1 day' }, ...]}
-//       value={days}
-//       onChange={setDays}
-//     />
 const SegmentedControl = <T extends string | number>({
   options,
   value,
@@ -47,15 +29,19 @@ const SegmentedControl = <T extends string | number>({
   fullWidth = false,
   className,
 }: SegmentedControlProps<T>) => {
-  const sizeClasses = size === 'md' ? 'px-4 py-1.5 text-sm' : 'px-3 py-1 text-sm';
+  const sizeClasses =
+    size === 'md' ? 'h-9 px-4 text-sm' : 'h-8 px-3 text-xs sm:text-sm';
 
   return (
     <div
       role='radiogroup'
       aria-label={ariaLabel}
       className={clsx(
-        'bg-base-300/60 rounded-lg p-0.5',
-        fullWidth ? 'flex w-full' : 'inline-flex',
+        // M3 Segmented Track: Full Pill Container with subtle outline
+        'rounded-full p-1 transition-colors duration-200',
+        'bg-neutral-200/60 dark:bg-neutral-800/60',
+        'border border-neutral-300/40 dark:border-neutral-700/50',
+        fullWidth ? 'flex w-full' : 'inline-flex items-center',
         className,
       )}
     >
@@ -74,15 +60,19 @@ const SegmentedControl = <T extends string | number>({
               if (!selected) onChange(option.value);
             }}
             className={clsx(
-              'rounded-md font-medium transition-colors disabled:opacity-50',
-              fullWidth && 'flex-1',
+              // M3 Segment Geometry & Typography
+              'inline-flex items-center justify-center rounded-full font-medium tracking-tight',
+              'transition-all duration-200 ease-out select-none',
+              fullWidth && 'flex-1 min-w-0',
               sizeClasses,
               selected
-                ? 'bg-primary text-primary-content shadow-sm'
-                : 'text-base-content/70 hover:text-base-content',
+                ? 'bg-primary text-primary-content shadow-sm font-semibold'
+                : 'text-neutral-700 hover:bg-neutral-500/10 active:bg-neutral-500/15 dark:text-neutral-300 dark:hover:bg-neutral-400/12 dark:active:bg-neutral-400/20',
+              optionDisabled && 'pointer-events-none opacity-40 cursor-not-allowed !bg-transparent',
+              !optionDisabled && 'active:scale-[0.97]',
             )}
           >
-            {option.label}
+            <span className='truncate'>{option.label}</span>
           </button>
         );
       })}

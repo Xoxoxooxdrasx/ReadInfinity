@@ -9,7 +9,6 @@ const Alert: React.FC<{
   onCancel: () => void;
   onConfirm: () => void;
   // Optional content rendered between the title/message and the actions row
-  // (e.g. the delete confirmation's "purge reading data" toggle).
   children?: React.ReactNode;
   confirmLabel?: string;
   confirmButtonClassName?: string;
@@ -20,61 +19,73 @@ const Alert: React.FC<{
   onConfirm,
   children,
   confirmLabel,
-  confirmButtonClassName = 'btn-warning',
+  confirmButtonClassName = 'bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-500 dark:hover:bg-amber-600 dark:text-neutral-950',
 }) => {
   const _ = useTranslation();
   const [isProcessing, setIsProcessing] = React.useState(false);
   const divRef = useKeyDownActions({ onCancel, onConfirm });
 
   return (
-    // `w-full` is load-bearing: every call site mounts this as the lone child
-    // of a `flex justify-center` bar, and a flex item without a definite width
-    // sizes to its content. Without it the surface below measured itself off
-    // its longest line, so the box resized whenever the text changed (e.g. the
-    // delete confirmation's purge toggle swapping in longer copy mid-dialog).
     <div className='z-[130] flex w-full justify-center px-4'>
       <div
         ref={divRef}
         role='alert'
-        // Always stack the title/message block above the actions row. The
-        // previous side-by-side layout flex-wrapped at narrow widths and
-        // produced the cramped two-column-with-stacked-buttons shape from
-        // Image #3. Avoid the daisyUI `alert` class here — it applies a
-        // `display: grid` with `justify-items: center` that collapses the
-        // actions row to content width and pulls it toward the centre,
-        // defeating `justify-end`. We want a plain flex-column surface.
         className={clsx(
-          'flex flex-col gap-3',
-          'bg-base-300 rounded-lg p-4 shadow-2xl',
-          'w-full max-w-md sm:max-w-lg md:max-w-xl',
+          'flex flex-col gap-4',
+          // Material 3 Dialog Container (28px corner radius + elevation)
+          'rounded-[28px] p-6 shadow-2xl',
+          'bg-neutral-50/95 dark:bg-neutral-900/95 backdrop-blur-xl',
+          'border border-neutral-200/50 dark:border-neutral-800/50',
+          'w-full max-w-md sm:max-w-lg md:max-w-xl transition-all duration-200',
         )}
       >
-        <div className='labels flex items-start gap-3'>
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            fill='none'
-            viewBox='0 0 24 24'
-            className='stroke-info mt-0.5 h-6 w-6 shrink-0'
-          >
-            <path
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              strokeWidth='2'
-              d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
-            ></path>
-          </svg>
-          <div className='flex min-w-0 flex-col gap-1'>
-            <h3 className='text-start text-sm font-medium'>{title}</h3>
-            <div className='text-start text-sm'>{message}</div>
+        <div className='labels flex items-start gap-4'>
+          {/* M3 Tonal Icon Container */}
+          <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-400'>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              fill='none'
+              viewBox='0 0 24 24'
+              className='h-5 w-5 stroke-current'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth='2'
+                d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+              />
+            </svg>
+          </div>
+
+          <div className='flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5'>
+            <h3 className='text-start text-base font-semibold tracking-tight text-neutral-900 dark:text-neutral-100'>
+              {title}
+            </h3>
+            <div className='text-start text-sm leading-relaxed text-neutral-600 dark:text-neutral-400'>
+              {message}
+            </div>
           </div>
         </div>
-        {children}
-        <div className='buttons flex items-center justify-end gap-2'>
-          <button className='btn btn-sm btn-neutral' onClick={onCancel}>
+
+        {children && <div className='px-1'>{children}</div>}
+
+        {/* Material 3 Actions Row */}
+        <div className='buttons mt-2 flex items-center justify-end gap-2'>
+          <button
+            type='button'
+            className='rounded-full px-5 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-200/60 dark:text-neutral-300 dark:hover:bg-neutral-800/60 transition-colors'
+            onClick={onCancel}
+          >
             {_('Cancel')}
           </button>
           <button
-            className={clsx('btn btn-sm', confirmButtonClassName, { 'btn-disabled': isProcessing })}
+            type='button'
+            className={clsx(
+              'rounded-full px-6 py-2 text-sm font-medium shadow-sm transition-all duration-200',
+              'hover:shadow-md active:scale-95 disabled:opacity-50 disabled:pointer-events-none',
+              confirmButtonClassName,
+            )}
+            disabled={isProcessing}
             onClick={() => {
               setIsProcessing(true);
               onConfirm();

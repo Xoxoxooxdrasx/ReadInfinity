@@ -15,14 +15,24 @@ interface BookCoverViewerProps {
 }
 
 // Shows a book cover full screen in the reader's image viewer (#5813), so the
-// sidebar / Book Details thumbnail can be blown up to show someone without
-// leaving the reading position. Portaled to the top modal layer so it covers
-// whatever it was opened from (the sidebar, the Book Details dialog).
+// sidebar / Book Details thumbnail can be blown up without leaving the reading position.
+// Portaled to the top modal layer with M3 tonal backdrop blur and smooth transitions.
 const BookCoverViewer: React.FC<BookCoverViewerProps> = ({ src, onClose }) => {
   const { safeAreaInsets } = useThemeStore();
+
   return (
     <ModalPortal showOverlay={false}>
-      <ImageViewer gridInsets={safeAreaInsets ?? ZERO_INSETS} src={src} onClose={onClose} />
+      <div 
+        className='fixed inset-0 z-[250] flex items-center justify-center bg-neutral-950/85 backdrop-blur-xl transition-opacity duration-300 animate-fade-in'
+        role='dialog'
+        aria-modal='true'
+      >
+        <ImageViewer 
+          gridInsets={safeAreaInsets ?? ZERO_INSETS} 
+          src={src} 
+          onClose={onClose} 
+        />
+      </div>
     </ModalPortal>
   );
 };

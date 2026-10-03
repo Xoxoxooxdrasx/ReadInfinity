@@ -122,6 +122,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
               <div
                 aria-hidden={appShellHidden}
                 style={appShellHidden ? { display: 'none' } : undefined}
+                className='min-h-screen bg-neutral-100 text-neutral-900 transition-colors duration-200 dark:bg-neutral-950 dark:text-neutral-100'
               >
                 {children}
                 <CommandPalette />

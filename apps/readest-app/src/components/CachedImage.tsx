@@ -1,5 +1,6 @@
 'use client';
 
+import clsx from 'clsx';
 import Image from 'next/image';
 import { useState, useEffect, memo } from 'react';
 
@@ -25,7 +26,6 @@ interface CachedImageProps {
 const imageUrlCache = new Map<string, string>();
 const loadingPromises = new Map<string, Promise<string>>();
 
-// '\n' cannot appear in a URL, so the key never collides with a plain URL key.
 const toCacheKey = (src: string, cacheVersion?: string) =>
   cacheVersion ? `${src}\n${cacheVersion}` : src;
 
@@ -108,8 +108,9 @@ const CachedImageComponent = ({
 
   if (loading) {
     return (
-      <div className={className}>
-        <div className='bg-base-200 h-full w-full animate-pulse' />
+      <div className={clsx('overflow-hidden rounded-xl', className)}>
+        {/* M3 Tonal Surface Skeleton */}
+        <div className='h-full w-full bg-neutral-200/70 dark:bg-neutral-800/70 animate-pulse' />
       </div>
     );
   }
@@ -119,13 +120,22 @@ const CachedImageComponent = ({
       return <>{fallback}</>;
     }
     return (
-      <div className={`flex h-full w-full items-center justify-center ${className || ''}`}>
-        <div className='text-base-content/30'>
-          <svg className='h-16 w-16' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+      <div
+        className={clsx(
+          'flex h-full w-full items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200/40 dark:border-neutral-800/40 transition-colors',
+          className,
+        )}
+      >
+        <div className='text-neutral-400 dark:text-neutral-600'>
+          <svg
+            className='h-12 w-12 stroke-current opacity-80'
+            fill='none'
+            viewBox='0 0 24 24'
+            strokeWidth={1.5}
+          >
             <path
               strokeLinecap='round'
               strokeLinejoin='round'
-              strokeWidth={2}
               d='M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253'
             />
           </svg>
@@ -135,7 +145,15 @@ const CachedImageComponent = ({
   }
 
   if (fill) {
-    return <Image src={cachedUrl} alt={alt} fill className={className} sizes={sizes} />;
+    return (
+      <Image
+        src={cachedUrl}
+        alt={alt}
+        fill
+        className={clsx('transition-opacity duration-300', className)}
+        sizes={sizes}
+      />
+    );
   }
 
   return (
@@ -144,7 +162,7 @@ const CachedImageComponent = ({
       alt={alt}
       width={width}
       height={height}
-      className={className}
+      className={clsx('transition-opacity duration-300', className)}
       sizes={sizes}
     />
   );

@@ -21,16 +21,27 @@ export const Toast = () => {
     error: 'toast-error toast-top sm:toast-end toast-center',
   };
 
+  // M3 Semantic Surface Containers & Typography colors
   const alertClassMap = {
-    info: 'alert-primary border-base-300',
-    success: 'alert-success not-eink:from-green-500 not-eink:to-emerald-500',
-    warning: 'alert-warning not-eink:from-amber-500 not-eink:to-orange-500',
-    error: 'alert-error not-eink:from-red-500 not-eink:to-rose-500',
+    info: 'bg-neutral-900/95 text-neutral-100 dark:bg-neutral-100/95 dark:text-neutral-900 border border-neutral-700/40 dark:border-neutral-300/40',
+    success:
+      'bg-emerald-900/95 text-emerald-100 dark:bg-emerald-100/95 dark:text-emerald-950 border border-emerald-700/40 dark:border-emerald-300/40',
+    warning:
+      'bg-amber-950/95 text-amber-100 dark:bg-amber-100/95 dark:text-amber-950 border border-amber-800/40 dark:border-amber-300/40',
+    error:
+      'bg-rose-950/95 text-rose-100 dark:bg-rose-100/95 dark:text-rose-950 border border-rose-800/40 dark:border-rose-300/40',
+  };
+
+  const iconClassMap = {
+    info: 'text-primary dark:text-primary-light',
+    success: 'text-emerald-400 dark:text-emerald-700',
+    warning: 'text-amber-400 dark:text-amber-700',
+    error: 'text-rose-400 dark:text-rose-700',
   };
 
   const iconMap = {
     info: (
-      <svg className='h-5 w-5' fill='currentColor' viewBox='0 0 20 20'>
+      <svg className='h-5 w-5 shrink-0' fill='currentColor' viewBox='0 0 20 20'>
         <path
           fillRule='evenodd'
           d='M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z'
@@ -39,7 +50,7 @@ export const Toast = () => {
       </svg>
     ),
     success: (
-      <svg className='h-5 w-5' fill='currentColor' viewBox='0 0 20 20'>
+      <svg className='h-5 w-5 shrink-0' fill='currentColor' viewBox='0 0 20 20'>
         <path
           fillRule='evenodd'
           d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z'
@@ -48,7 +59,7 @@ export const Toast = () => {
       </svg>
     ),
     warning: (
-      <svg className='h-5 w-5' fill='currentColor' viewBox='0 0 20 20'>
+      <svg className='h-5 w-5 shrink-0' fill='currentColor' viewBox='0 0 20 20'>
         <path
           fillRule='evenodd'
           d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z'
@@ -57,7 +68,7 @@ export const Toast = () => {
       </svg>
     ),
     error: (
-      <svg className='h-5 w-5' fill='currentColor' viewBox='0 0 20 20'>
+      <svg className='h-5 w-5 shrink-0' fill='currentColor' viewBox='0 0 20 20'>
         <path
           fillRule='evenodd'
           d='M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z'
@@ -119,37 +130,38 @@ export const Toast = () => {
       <div
         data-capture-invalidating-overlay='true'
         className={clsx(
-          'toast z-[130] w-auto max-w-screen-sm transition-all duration-300',
+          'toast pointer-events-none z-[130] w-auto max-w-screen-sm transition-all duration-200 ease-out',
           toastClassMap[toastType],
-          isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
+          isVisible ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 -translate-y-2',
         )}
         style={{
           top: toastClassMap[toastType].includes('toast-top')
-            ? `${(safeAreaInsets?.top || 0) + 44}px`
+            ? `${(safeAreaInsets?.top || 0) + 48}px`
             : undefined,
         }}
       >
         <div
           className={clsx(
-            'alert flex items-center gap-3 shadow-2xl backdrop-blur-sm',
-            'min-h-0 rounded-2xl px-5 py-4',
-            'not-eink:bg-gradient-to-r border-0',
+            // M3 Elevated Snackbar Container
+            'pointer-events-auto flex items-center gap-3 shadow-xl backdrop-blur-xl',
+            'min-h-[48px] rounded-[20px] px-4 py-3 sm:px-5 sm:py-3.5',
             alertClassMap[toastType],
             'eink:bg-base-100 eink:border eink:border-base-content',
-            toastType !== 'info' && 'text-white',
           )}
         >
-          {/* Icon */}
-          <div className='flex-shrink-0'>{iconMap[toastType]}</div>
+          {/* M3 Icon Container */}
+          <div className={clsx('flex-shrink-0', iconClassMap[toastType])}>
+            {iconMap[toastType]}
+          </div>
 
           {/* Message */}
           <span
             className={clsx(
               'max-h-[50vh] flex-1 overflow-y-auto',
-              'font-sans text-base font-medium leading-snug sm:text-sm',
+              'font-sans text-sm font-medium leading-snug',
               toastType === 'info'
-                ? 'max-w-[60vw] truncate sm:max-w-[80vw]'
-                : 'min-w-[60vw] max-w-[80vw] whitespace-normal break-words sm:min-w-40 sm:max-w-80',
+                ? 'max-w-[65vw] truncate sm:max-w-[75vw]'
+                : 'min-w-[55vw] max-w-[75vw] whitespace-normal break-words sm:min-w-40 sm:max-w-80',
               messageClass,
             )}
           >
@@ -161,27 +173,26 @@ export const Toast = () => {
             ))}
           </span>
 
-          {/* Close button */}
-          <button
-            onClick={handleDismiss}
-            className={clsx(
-              'flex-shrink-0 rounded-lg p-1 transition-colors',
-              toastType === 'info'
-                ? 'hover:bg-base-300 hidden'
-                : 'hover:bg-white/20 active:bg-white/30',
-            )}
-            aria-label='Dismiss'
-          >
-            <svg className='h-4 w-4' fill='currentColor' viewBox='0 0 20 20'>
-              <path
-                fillRule='evenodd'
-                d='M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z'
-                clipRule='evenodd'
-              />
-            </svg>
-          </button>
+          {/* M3 Close Pill Button */}
+          {toastType !== 'info' && (
+            <button
+              onClick={handleDismiss}
+              className='inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full transition-colors hover:bg-current/10 active:bg-current/20'
+              aria-label='Dismiss'
+            >
+              <svg className='h-4 w-4' fill='currentColor' viewBox='0 0 20 20'>
+                <path
+                  fillRule='evenodd'
+                  d='M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z'
+                  clipRule='evenodd'
+                />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     )
   );
 };
+
+export default Toast;

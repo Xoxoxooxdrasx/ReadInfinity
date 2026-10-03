@@ -29,16 +29,7 @@ interface DialogProps {
   bgClassName?: string;
   boxClassName?: string;
   contentClassName?: string;
-  /**
-   * Replace the body's native `overflow-y-auto` with OverlayScrollbars so
-   * the scrollbar is the floating, theme-aware kind instead of the host's
-   * native one (which Android/iOS webviews auto-hide entirely, leaving the
-   * user with no visible scrollbar). Opt-in per dialog — set true for
-   * long-content dialogs like Settings; leave false for short modals where
-   * native scrolling is fine.
-   */
   useOverlayScroll?: boolean;
-  /** Handle Android Back before dismissing the dialog; useful for nested views. */
   onBack?: () => void;
   onClose: () => void;
 }
@@ -157,7 +148,6 @@ const Dialog: React.FC<DialogProps> = ({
       data.velocity > VELOCITY_THRESHOLD ||
       (data.velocity >= 0 && data.clientY >= window.innerHeight * snapLower)
     ) {
-      // dialog is dismissed
       const transitionDuration = 0.15 / Math.max(data.velocity, 0.5);
       modal.style.height = '100%';
       modal.style.transition = `transform ${transitionDuration}s ease-out`;
@@ -173,7 +163,6 @@ const Dialog: React.FC<DialogProps> = ({
       data.clientY > window.innerHeight * snapUpper &&
       data.clientY < window.innerHeight * snapLower
     ) {
-      // dialog is snapped
       overlay.style.transition = `opacity 0.3s ease-out`;
       overlay.style.opacity = `${1 - snapHeight}`;
       modal.style.height = `${snapHeight * 100}%`;
@@ -181,7 +170,6 @@ const Dialog: React.FC<DialogProps> = ({
       modal.style.transition = `transform 0.3s ease-out`;
       modal.style.transform = '';
     } else {
-      // dialog is opened without snap
       setIsFullHeightInMobile(true);
       modal.style.height = '100%';
       modal.style.transition = `transform 0.3s ease-out`;
@@ -211,22 +199,28 @@ const Dialog: React.FC<DialogProps> = ({
       )}
       dir={isRtl ? 'rtl' : undefined}
     >
+      {/* M3 Scrim */}
       <Overlay
         captureBlocking={isOpen}
         className={clsx(
-          'dialog-overlay z-10 bg-black/50 sm:bg-black/50',
+          'dialog-overlay z-10 bg-neutral-950/45 backdrop-blur-[2px] transition-opacity duration-300',
           appService?.hasRoundedWindow && 'rounded-window',
           bgClassName,
         )}
         onDismiss={onClose}
       />
+
+      {/* M3 Surface Container & Bottom Sheet Chassis */}
       <div
         className={clsx(
-          'modal-box settings-content absolute z-20 flex flex-col rounded-none rounded-tl-2xl rounded-tr-2xl p-0 sm:rounded-2xl',
+          'modal-box settings-content absolute z-20 flex flex-col p-0',
+          'bg-neutral-50/95 dark:bg-neutral-900/95 backdrop-blur-2xl shadow-2xl',
+          'border border-neutral-200/50 dark:border-neutral-800/60',
+          'rounded-t-[28px] rounded-b-none sm:rounded-[28px]',
           'h-full max-h-full w-full max-w-full',
           window.innerWidth < window.innerHeight
-            ? 'sm:h-[50%] sm:w-3/4'
-            : 'sm:h-[65%] sm:w-1/2 sm:max-w-[600px]',
+            ? 'sm:h-[55%] sm:w-3/4'
+            : 'sm:h-[70%] sm:w-1/2 sm:max-w-[620px]',
           boxClassName,
         )}
         style={{
@@ -241,30 +235,32 @@ const Dialog: React.FC<DialogProps> = ({
             : {}),
         }}
       >
+        {/* M3 Bottom Sheet Drag Handle */}
         {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
         <div
           className={clsx(
-            'drag-handle mb-2 h-6 max-h-6 min-h-6 w-full cursor-row-resize items-center justify-center',
-            'transition-padding-top flex duration-300 ease-out sm:hidden',
+            'drag-handle mb-1 h-7 min-h-[28px] w-full cursor-row-resize items-center justify-center',
+            'flex transition-all duration-300 ease-out sm:hidden',
           )}
           onMouseDown={handleDragStart}
           onTouchStart={handleDragStart}
         >
-          <div className='bg-base-content/50 h-1 w-10 rounded-full'></div>
+          <div className='h-1 w-8 rounded-full bg-neutral-400/60 dark:bg-neutral-600/70 transition-colors' />
         </div>
-        <div className='dialog-header sticky top-1 z-10 flex items-center justify-between px-2 sm:pe-3 sm:ps-2'>
+
+        {/* M3 Dialog App Bar */}
+        <div className='dialog-header sticky top-0 z-10 flex items-center justify-between px-3 py-1 sm:px-4 sm:py-2'>
           {header ? (
             header
           ) : (
             <div className='flex h-11 w-full items-center justify-between'>
               <button
+                type='button'
                 aria-label={_('Close')}
                 aria-hidden={!isOpen}
                 onClick={onClose}
                 disabled={!dismissible}
-                className={
-                  'btn btn-ghost btn-circle flex h-8 min-h-8 w-8 hover:bg-transparent focus:outline-none disabled:bg-transparent sm:hidden'
-                }
+                className='inline-flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-500/10 dark:text-neutral-300 dark:hover:bg-neutral-400/15 transition-colors focus:outline-none disabled:opacity-40 sm:hidden'
               >
                 {isRtl ? (
                   <MdArrowForwardIos size={iconSize22} />
@@ -272,41 +268,44 @@ const Dialog: React.FC<DialogProps> = ({
                   <MdArrowBackIosNew size={iconSize22} />
                 )}
               </button>
-              <div className='z-15 pointer-events-none absolute inset-0 flex h-11 items-center justify-center'>
-                <span className='line-clamp-1 text-center font-bold'>{title ?? ''}</span>
+
+              <div className='pointer-events-none absolute inset-0 flex h-11 items-center justify-center'>
+                <span className='line-clamp-1 text-center text-base font-semibold tracking-tight text-neutral-900 dark:text-neutral-100'>
+                  {title ?? ''}
+                </span>
               </div>
+
               <button
+                type='button'
                 aria-label={_('Close')}
                 aria-hidden={!isOpen}
                 onClick={onClose}
                 disabled={!dismissible}
-                className={
-                  'bg-base-300/65 btn btn-ghost btn-circle ml-auto hidden h-6 min-h-6 w-6 focus:outline-none sm:flex'
-                }
+                className='ml-auto hidden h-8 w-8 items-center justify-center rounded-full bg-neutral-200/50 hover:bg-neutral-300/60 text-neutral-600 dark:bg-neutral-800/50 dark:hover:bg-neutral-700/60 dark:text-neutral-300 transition-colors focus:outline-none sm:inline-flex'
               >
                 <svg
                   xmlns='http://www.w3.org/2000/svg'
-                  width='1em'
-                  height='1em'
+                  width='16'
+                  height='16'
                   viewBox='0 0 24 24'
+                  fill='none'
+                  stroke='currentColor'
+                  strokeWidth='2.2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                 >
-                  <path
-                    fill='currentColor'
-                    d='M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z'
-                  />
+                  <line x1='18' y1='6' x2='6' y2='18' />
+                  <line x1='6' y1='6' x2='18' y2='18' />
                 </svg>
               </button>
             </div>
           )}
         </div>
 
+        {/* Content Body */}
         {useOverlayScroll ? (
-          // OverlayScrollbarsComponent owns the scroller; the inner viewport
-          // gets `overflow-y-auto` automatically. Keep the same flex /
-          // padding chassis so the body still occupies remaining height
-          // and the children's horizontal rhythm is unchanged.
           <OverlayScrollbarsComponent
-            className={clsx('text-base-content my-2 flex-grow px-6 sm:px-[10%]', contentClassName)}
+            className={clsx('my-2 flex-grow px-6 text-neutral-800 dark:text-neutral-200 sm:px-8', contentClassName)}
             options={{
               scrollbars: { autoHide: 'scroll', clickScroll: true },
               showNativeOverlaidScrollbars: false,
@@ -318,7 +317,7 @@ const Dialog: React.FC<DialogProps> = ({
         ) : (
           <div
             className={clsx(
-              'text-base-content my-2 flex-grow overflow-y-auto px-6 sm:px-[10%]',
+              'my-2 flex-grow overflow-y-auto px-6 text-neutral-800 dark:text-neutral-200 sm:px-8',
               contentClassName,
             )}
           >

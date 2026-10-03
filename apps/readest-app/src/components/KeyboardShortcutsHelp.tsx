@@ -43,19 +43,23 @@ export const KeyboardShortcutsHelp = () => {
 
   const renderSection = useCallback(
     (section: (typeof sections)[number]) => (
-      <div key={section.section} className='mb-4'>
-        <h3 className='text-base-content/70 mb-2 text-xs font-semibold uppercase tracking-wide'>
+      <div key={section.section} className='mb-5'>
+        {/* M3 Section Label */}
+        <h3 className='mb-2.5 text-xs font-semibold uppercase tracking-wider text-primary'>
           {_(section.section)}
         </h3>
-        <div className='divide-base-200 divide-y'>
+        <div className='divide-y divide-neutral-200/50 dark:divide-neutral-800/50'>
           {section.items.map((item) => (
-            <div key={item.description} className='flex items-center justify-between gap-4 py-1.5'>
-              <span className='text-base-content text-sm'>{_(item.description)}</span>
-              <div className='flex shrink-0 gap-1'>
+            <div key={item.description} className='flex items-center justify-between gap-4 py-2'>
+              <span className='text-sm text-neutral-800 dark:text-neutral-200'>
+                {_(item.description)}
+              </span>
+              <div className='flex shrink-0 items-center gap-1.5'>
                 {item.keys.map((key) => (
+                  /* M3 Keycap Chip */
                   <kbd
                     key={key}
-                    className='border-base-300 bg-base-200 text-base-content inline-flex h-[22px] min-w-[22px] items-center justify-center rounded border px-1.5 text-xs shadow-sm'
+                    className='inline-flex h-6 min-w-[24px] items-center justify-center rounded-lg border border-neutral-300/50 bg-neutral-200/70 px-2 text-[11px] font-semibold text-neutral-800 shadow-sm transition-colors dark:border-neutral-700/60 dark:bg-neutral-800/80 dark:text-neutral-200'
                     style={{ fontFamily: 'monospace' }}
                   >
                     {formatKeyForDisplay(key, isMac)}
@@ -108,7 +112,6 @@ export const KeyboardShortcutsHelp = () => {
 
   const handleClose = () => {
     setIsOpen(false);
-    // Move focus away from the dialog so the '?' key listener works immediately
     (document.activeElement as HTMLElement)?.blur();
   };
 
@@ -118,18 +121,19 @@ export const KeyboardShortcutsHelp = () => {
       isOpen={isOpen}
       title={_('Keyboard Shortcuts')}
       onClose={handleClose}
-      boxClassName='sm:!w-[560px] md:!w-[780px] sm:!max-w-[90vw] sm:h-auto sm:!max-h-[80vh]'
+      boxClassName='sm:!w-[560px] md:!w-[780px] sm:!max-w-[90vw] sm:h-auto sm:!max-h-[80vh] !rounded-[28px]'
+      useOverlayScroll={true}
     >
       {isOpen && (
         <div className='shortcuts-content pb-6 sm:pb-2'>
-          <div className='md:grid md:grid-cols-2 md:gap-6'>
+          <div className='md:grid md:grid-cols-2 md:gap-8'>
             <div>{leftColumn.map(renderSection)}</div>
             <div>{rightColumn.map(renderSection)}</div>
           </div>
-          <div className='border-base-200 mt-2 border-t pt-3 text-center'>
+          <div className='mt-4 border-t border-neutral-200/50 pt-3 text-center dark:border-neutral-800/50'>
             <Link
               href='https://github.com/readest/readest/wiki/Keyboard-Shortcuts-Reference-Guide'
-              className='text-primary text-sm underline'
+              className='text-sm font-medium text-primary underline underline-offset-4 hover:opacity-85'
             >
               {_('View all keyboard shortcuts')}
             </Link>
@@ -139,3 +143,5 @@ export const KeyboardShortcutsHelp = () => {
     </Dialog>
   );
 };
+
+export default KeyboardShortcutsHelp;

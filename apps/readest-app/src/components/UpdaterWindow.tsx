@@ -196,10 +196,6 @@ export const UpdaterContent = ({
       let downloaded = 0;
       let total = 0;
       let finished = false;
-      // Resolve when tauriDownload itself completes — NOT only when a progress
-      // tick reports progress === total. Servers that omit Content-Length leave
-      // total at 0, so that tick never fires and the await would hang forever
-      // after the file is fully written (nightly portable/AppImage/Android).
       await tauriDownload(downloadUrl, filePath, (progress) => {
         if (!onEvent) return;
         if (!total && progress.total) {
@@ -273,12 +269,10 @@ export const UpdaterContent = ({
           downloadAndInstall: async (onEvent) => {
             await downloadWithProgress(downloadUrl, appImageFilePath, onEvent);
             try {
-              // Make the AppImage executable
               const chmodCommand = Command.create('chmod-appimage', ['+x', appImageFilePath]);
               await chmodCommand.execute();
               console.log('AppImage made executable:', appImageFilePath);
 
-              // Launch the new AppImage
               console.log('Launching new AppImage:', appImageFilePath);
               const launchCommand = Command.create('launch-appimage', [appImageFilePath]);
               await launchCommand.spawn();
@@ -300,10 +294,6 @@ export const UpdaterContent = ({
       body: n.notes,
       downloadAndInstall: async (onEvent) => {
         if (TAURI_UPDATER_KEYS.has(n.platformKey)) {
-          // macOS / Windows-NSIS: Tauri updater (verify + install +
-          // relaunch). A 0 contentLength (server omitted Content-Length) is
-          // tolerated: we only emit 'Started' once a non-zero total arrives so
-          // the percent math never divides by zero.
           let total = 0;
           let lastDownloaded = 0;
           await installNightlyUpdate(n.endpoint, (p) => {
@@ -312,8 +302,6 @@ export const UpdaterContent = ({
                 total = p.contentLength;
                 onEvent?.({ event: 'Started', data: { contentLength: total } });
               }
-              // p.downloaded is a cumulative running total from Rust, but the
-              // consumer treats chunkLength as a per-chunk delta, so convert.
               onEvent?.({
                 event: 'Progress',
                 data: { chunkLength: p.downloaded - lastDownloaded },
@@ -325,12 +313,9 @@ export const UpdaterContent = ({
           });
           return;
         }
-        // Windows-portable / Linux-AppImage / Android: download, verify, install.
         const fileName = n.url.split('/').pop() || `Read∞_${n.version}`;
         let filePath: string;
         if (n.platformKey.includes('portable')) {
-          // Windows portable: write into the executable dir so the new exe
-          // replaces the running one in place (mirrors checkWindowsPortableUpdate).
           const execDir = await invoke<string>('get_executable_dir');
           filePath = await join(execDir, fileName);
         } else {
@@ -354,7 +339,6 @@ export const UpdaterContent = ({
             await exit(0);
           }, 500);
         } else {
-          // windows portable
           const command = Command.create('start-readest', ['/C', 'start', '', filePath]);
           await command.spawn();
           setTimeout(async () => {
@@ -451,8 +435,6 @@ export const UpdaterContent = ({
       if (!targetLang.toLowerCase().startsWith('en')) {
         for (const entry of changelogs) {
           try {
-            // Preserve the original English `notes`; store the translation
-            // separately so the "Show original" toggle can flip between them.
             entry.translatedNotes = await translate(entry.notes, { useCache: true });
           } catch (error) {
             console.log('Failed to translate changelog:', error);
@@ -492,8 +474,6 @@ export const UpdaterContent = ({
           case 'Progress':
             downloaded += event.data.chunkLength;
             setDownloaded(downloaded);
-            // Guard against a 0 total (server omitted Content-Length): keep the
-            // bar at an indeterminate 0% instead of NaN/Infinity.
             const percent = contentLength > 0 ? Math.floor((downloaded / contentLength) * 100) : 0;
             setProgress(percent);
             if (downloaded - lastLogged >= 1 * 1024 * 1024) {
@@ -525,8 +505,8 @@ export const UpdaterContent = ({
 
   if (error) {
     return (
-      <div className='bg-base-100 flex min-h-screen items-center justify-center'>
-        <p className='text-base-content text-sm font-bold'>{error}</p>
+      <div className='flex min-h-[240px] items-center justify-center p-6'>
+        <p className='text-sm font-semibold text-rose-600 dark:text-rose-400'>{error}</p>
       </div>
     );
   }
@@ -536,77 +516,96 @@ export const UpdaterContent = ({
   }
 
   return (
-    <div className='bg-base-100 flex min-h-screen justify-center'>
-      <div className='flex w-full max-w-2xl flex-col gap-4'>
-        <div className='flex flex-col justify-center gap-4 sm:flex-row sm:items-start'>
-          <div className='flex items-center justify-center'>
-            <Image src='/icon.png' alt='Logo' className='h-20 w-20' width={64} height={64} />
+    <div className='flex w-full justify-center text-neutral-900 dark:text-neutral-100'>
+      <div className='flex w-full max-w-2xl flex-col gap-5'>
+        {/* Header Hero Row */}
+        <div className='flex flex-col justify-center gap-5 sm:flex-row sm:items-start'>
+          <div className='flex items-center justify-center shrink-0'>
+            <div className='rounded-2xl border border-neutral-300/40 bg-neutral-200/50 p-2 shadow-sm dark:border-neutral-700/50 dark:bg-neutral-800/50'>
+              <Image src='/icon.png' alt='Logo' className='h-16 w-16 sm:h-20 sm:w-20' width={80} height={80} />
+            </div>
           </div>
 
           {checkUpdate ? (
-            <div className='text-base-content flex-grow text-sm'>
-              <h2 className='mb-4 text-center font-bold sm:text-start'>
+            <div className='flex-grow text-sm'>
+              <h2 className='mb-2 text-center text-base font-semibold tracking-tight sm:text-start sm:text-lg'>
                 {_('A new version of Read∞ is available!')}
               </h2>
-              <p className='mb-2'>
+              <p className='mb-1.5 text-neutral-600 dark:text-neutral-300 leading-relaxed'>
                 {_('Read∞ {{newVersion}} is available (installed version {{currentVersion}}).', {
                   newVersion,
                   currentVersion,
                 })}
               </p>
-              <p className='mb-2'>{_('Download and install now?')}</p>
+              <p className='mb-3 font-medium text-neutral-800 dark:text-neutral-200'>
+                {_('Download and install now?')}
+              </p>
 
-              <div className='flex w-full flex-row items-center justify-end gap-4'>
+              {/* Progress & Actions */}
+              <div className='flex w-full flex-col gap-3 pt-1'>
                 {progress !== null && (
-                  <div className='flex flex-grow flex-col'>
-                    <progress
-                      className='progress my-1 h-4 w-full'
-                      value={progress}
-                      max='100'
-                    ></progress>
-                    <p className='text-base-content/75 flex items-center justify-center text-sm'>
-                      {progress < 100
-                        ? _('Downloading {{downloaded}} of {{contentLength}}', {
-                            downloaded: downloaded
-                              ? `${Math.floor(downloaded / 1024 / 1024)} MB`
-                              : '0 MB',
-                            contentLength: contentLength
-                              ? `${Math.floor(contentLength / 1024 / 1024)} MB`
-                              : '0 MB',
-                          })
-                        : _('Download finished')}
+                  <div className='flex w-full flex-col gap-1.5'>
+                    <div className='h-2.5 w-full overflow-hidden rounded-full bg-neutral-300/60 dark:bg-neutral-700/60'>
+                      <div
+                        className='h-full rounded-full bg-primary transition-all duration-300 ease-out'
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <p className='flex items-center justify-between text-xs font-medium text-neutral-500 dark:text-neutral-400'>
+                      <span>
+                        {progress < 100
+                          ? _('Downloading {{downloaded}} of {{contentLength}}', {
+                              downloaded: downloaded
+                                ? `${Math.floor(downloaded / 1024 / 1024)} MB`
+                                : '0 MB',
+                              contentLength: contentLength
+                                ? `${Math.floor(contentLength / 1024 / 1024)} MB`
+                                : '0 MB',
+                            })
+                          : _('Download finished')}
+                      </span>
+                      <span className='tabular-nums font-semibold'>{progress}%</span>
                     </p>
                   </div>
                 )}
 
-                <div className={clsx('card-actions', isDownloading && 'hidden sm:flex')}>
+                <div className={clsx('flex items-center justify-end', isDownloading && 'opacity-60 pointer-events-none')}>
                   <button
                     className={clsx(
-                      'btn btn-warning text-base-100 px-6 font-bold',
-                      (!update || isDownloading) && 'btn-disabled',
+                      'inline-flex h-10 items-center justify-center rounded-full px-6 text-sm font-semibold tracking-wide shadow-sm transition-all duration-150',
+                      'bg-primary text-primary-content hover:shadow-md active:scale-95',
+                      (!update || isDownloading) && 'opacity-40 pointer-events-none',
                     )}
                     onClick={handleDownloadInstall}
+                    disabled={!update || isDownloading}
                   >
-                    {_('DOWNLOAD & INSTALL')}
+                    {isDownloading ? (
+                      <span className='inline-flex items-center gap-2'>
+                        <span className='h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent' />
+                        {_('DOWNLOADING...')}
+                      </span>
+                    ) : (
+                      _('DOWNLOAD & INSTALL')
+                    )}
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            <div className='text-base-content flex h-full flex-grow flex-col text-sm sm:flex-row'>
-              <div className='flex flex-col items-center justify-center gap-4 p-1 sm:items-start sm:gap-2'>
-                <h2 className='text-center font-bold sm:text-start'>
+            <div className='flex h-full flex-grow flex-col text-sm sm:flex-row'>
+              <div className='flex flex-col items-center justify-center gap-3 p-1 sm:items-start'>
+                <h2 className='text-center text-base font-semibold tracking-tight sm:text-start sm:text-lg'>
                   {_('Version {{version}}', { version: currentVersion })}
                 </h2>
 
                 {changelogs.length > 0 && semver.gt(changelogs[0]!.version, currentVersion) ? (
-                  <div className='flex gap-2'>
+                  <div className='flex gap-2.5 pt-1'>
                     {(appService?.isIOSApp || appService?.isMacOSApp) && (
                       <Link
                         href='https://apps.apple.com/app/id6738622779'
                         target='_blank'
                         rel='noopener noreferrer'
-                        className='btn btn-primary btn-sm'
+                        className='inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-xs font-semibold text-primary-content shadow-sm transition-all hover:shadow active:scale-95'
                       >
                         {_('Check Update')}
                       </Link>
@@ -617,41 +616,59 @@ export const UpdaterContent = ({
                         href='https://github.com/ZHINFINITY/ReadInfinity/releases/latest'
                         target='_blank'
                         rel='noopener noreferrer'
-                        className='btn btn-primary btn-sm'
+                        className='inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-xs font-semibold text-primary-content shadow-sm transition-all hover:shadow active:scale-95'
                       >
                         {_('Check Update')}
                       </Link>
                     )}
                   </div>
                 ) : (
-                  <div className='flex'>
-                    <p className='text-sm font-bold'>{_('Already the latest version')}</p>
+                  <div className='inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300'>
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      viewBox='0 0 20 20'
+                      fill='currentColor'
+                      className='h-3.5 w-3.5 shrink-0'
+                    >
+                      <path
+                        fillRule='evenodd'
+                        d='M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z'
+                        clipRule='evenodd'
+                      />
+                    </svg>
+                    <span>{_('Already the latest version')}</span>
                   </div>
                 )}
               </div>
             </div>
           )}
         </div>
-        <div className='text-base-content text-sm'>
-          <div className='mb-2 flex items-center justify-between gap-2'>
-            <h3 className='font-bold'>{_('Changelog')}</h3>
+
+        {/* Changelog Section */}
+        <div className='text-sm'>
+          <div className='mb-2.5 flex items-center justify-between gap-2'>
+            <h3 className='text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100'>
+              {_('Changelog')}
+            </h3>
             {changelogs.some((entry) => entry.translatedNotes?.length) && (
               <button
-                className='btn btn-ghost btn-xs eink-bordered font-normal'
+                className='eink-bordered rounded-full border border-neutral-300/60 bg-neutral-200/50 px-3 py-1 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-500/10 active:bg-neutral-500/15 dark:border-neutral-700/60 dark:bg-neutral-800/50 dark:text-neutral-300 dark:hover:bg-neutral-400/12'
                 onClick={() => setShowOriginal((prev) => !prev)}
               >
                 {showOriginal ? _('Show translation') : _('Show original')}
               </button>
             )}
           </div>
-          <div className='not-eink:bg-base-200 not-eink:px-4 mb-4 rounded-lg pb-2 pt-4'>
+
+          {/* M3 Elevated Changelog Container */}
+          <div className='max-h-[42vh] overflow-y-auto rounded-2xl border border-neutral-300/40 bg-neutral-200/40 p-4 transition-colors dark:border-neutral-800/60 dark:bg-neutral-900/60'>
             {changelogs.length > 0 ? (
               changelogs.map((entry: Changelog) => (
-                <div key={entry.version} className='mb-4'>
-                  <h4 className='mb-2 font-bold'>
+                <div key={entry.version} className='mb-4 last:mb-0'>
+                  <h4 className='mb-2 text-xs font-semibold tracking-wide text-neutral-900 dark:text-neutral-100'>
                     {entry.version} ({entry.date})
                   </h4>
-                  <ul className='list-disc space-y-1 ps-6 text-sm'>
+                  <ul className='list-disc space-y-1.5 ps-5 text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed'>
                     {(showOriginal ? entry.notes : (entry.translatedNotes ?? entry.notes)).map(
                       (note: string, i: number) => (
                         <li key={i}>{note}</li>
@@ -661,10 +678,10 @@ export const UpdaterContent = ({
                 </div>
               ))
             ) : (
-              <div className='flex h-56 w-full flex-col gap-4'>
-                <div className='skeleton h-4 w-28'></div>
-                <div className='skeleton h-4 w-full'></div>
-                <div className='skeleton h-4 w-full'></div>
+              <div className='flex h-44 w-full flex-col gap-3 py-2'>
+                <div className='h-4 w-28 animate-pulse rounded-lg bg-neutral-300/50 dark:bg-neutral-700/50' />
+                <div className='h-4 w-full animate-pulse rounded-lg bg-neutral-300/40 dark:bg-neutral-700/40' />
+                <div className='h-4 w-5/6 animate-pulse rounded-lg bg-neutral-300/40 dark:bg-neutral-700/40' />
               </div>
             )}
           </div>
@@ -743,3 +760,5 @@ export const UpdaterWindow = () => {
     </Dialog>
   );
 };
+
+export default UpdaterWindow;

@@ -45,7 +45,7 @@ const MenuItem: React.FC<MenuItemProps> = ({
   setIsDropdownOpen,
 }) => {
   const _ = useTranslation();
-  const iconSize = useResponsiveSize(16);
+  const iconSize = useResponsiveSize(18);
   const [isDetailsOpen, setIsDetailsOpen] = React.useState(detailsOpen);
   const IconType = Icon || (toggled !== undefined ? (toggled ? MdCheck : undefined) : undefined);
 
@@ -59,12 +59,18 @@ const MenuItem: React.FC<MenuItemProps> = ({
   const buttonContent = (
     <>
       <div className='flex w-full items-center justify-between'>
-        <div className='flex min-w-0 items-center'>
+        <div className='flex min-w-0 items-center gap-2.5'>
           {!noIcon && (
-            <span style={{ minWidth: `${iconSize}px` }}>
+            <span
+              className={clsx(
+                'flex items-center justify-center shrink-0',
+                toggled ? 'text-primary' : disabled ? 'text-neutral-400 dark:text-neutral-600' : 'text-neutral-600 dark:text-neutral-400',
+              )}
+              style={{ width: `${iconSize}px`, minWidth: `${iconSize}px` }}
+            >
               {typeof IconType === 'function' ? (
                 <IconType
-                  className={clsx(disabled ? 'text-gray-400' : 'text-base-content', iconClassName)}
+                  className={clsx(iconClassName)}
                   size={iconSize}
                 />
               ) : (
@@ -74,7 +80,12 @@ const MenuItem: React.FC<MenuItemProps> = ({
           )}
           <span
             className={clsx(
-              'mx-2 flex-1 break-words text-pretty text-start text-base sm:text-sm',
+              'flex-1 break-words text-pretty text-start text-sm font-medium transition-colors',
+              toggled
+                ? 'text-primary font-semibold'
+                : disabled
+                  ? 'text-neutral-400 dark:text-neutral-600'
+                  : 'text-neutral-800 dark:text-neutral-200',
               labelClass,
             )}
             style={{ minWidth: 0 }}
@@ -85,47 +96,55 @@ const MenuItem: React.FC<MenuItemProps> = ({
         {shortcut && (
           <kbd
             className={clsx(
-              'border-base-300/40 bg-base-300/75 hidden rounded-md border shadow-sm sm:flex',
-              'shrink-0 px-1.5 py-0.5 text-xs font-medium',
-              disabled ? 'text-gray-400' : 'text-neutral-content',
+              'hidden shrink-0 items-center justify-center rounded-lg border px-2 py-0.5 text-[11px] font-semibold tracking-wide sm:inline-flex',
+              disabled
+                ? 'border-neutral-300/30 bg-neutral-200/40 text-neutral-400 dark:border-neutral-700/30 dark:bg-neutral-800/40 dark:text-neutral-600'
+                : 'border-neutral-300/50 bg-neutral-200/70 text-neutral-700 dark:border-neutral-700/60 dark:bg-neutral-800/80 dark:text-neutral-300',
             )}
+            style={{ fontFamily: 'monospace' }}
           >
             {shortcut}
           </kbd>
         )}
       </div>
-      <div className='flex w-full'>
-        {description && (
+      {description && (
+        <div className='flex w-full'>
           <span
-            className='mt-1 truncate text-start text-xs text-gray-500'
-            style={{ minWidth: 0, paddingInlineStart: noIcon ? '0' : `${iconSize + 8}px` }}
+            className='mt-0.5 truncate text-start text-xs text-neutral-500 dark:text-neutral-400 leading-tight'
+            style={{ minWidth: 0, paddingInlineStart: noIcon ? '0' : `${iconSize + 10}px` }}
           >
             {description}
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </>
+  );
+
+  const baseItemClasses = clsx(
+    // M3 State layer and item dimensions
+    'group flex w-full flex-col justify-center rounded-xl px-3 py-2 text-start transition-colors duration-150',
+    toggled
+      ? 'bg-primary/10 text-primary dark:bg-primary/15'
+      : 'text-neutral-800 hover:bg-neutral-500/10 active:bg-neutral-500/15 dark:text-neutral-200 dark:hover:bg-neutral-400/12 dark:active:bg-neutral-400/18',
+    disabled && 'pointer-events-none opacity-40 cursor-not-allowed !bg-transparent',
+    buttonClass,
   );
 
   if (children) {
     return (
-      <ul className='menu rounded-box m-0 p-0'>
-        <li aria-label={label}>
+      <ul className='m-0 list-none p-0 w-full'>
+        <li aria-label={label} className='w-full'>
           <details open={detailsOpen} onToggle={(e) => setIsDetailsOpen(e.currentTarget.open)}>
             <summary
               role='button'
               tabIndex={0}
               aria-expanded={isDetailsOpen}
-              className={clsx(
-                'hover:bg-base-300 text-base-content cursor-pointer rounded-md p-1 py-[10px] pr-3',
-                disabled && 'btn-disabled cursor-not-allowed text-gray-400',
-                buttonClass,
-              )}
+              className={clsx(baseItemClasses, 'cursor-pointer list-none [&::-webkit-details-marker]:hidden')}
               title={tooltip ? tooltip : ''}
             >
               {buttonContent}
             </summary>
-            {children}
+            <div className='pl-3 py-1 space-y-0.5'>{children}</div>
           </details>
         </li>
       </ul>
@@ -133,19 +152,16 @@ const MenuItem: React.FC<MenuItemProps> = ({
   }
 
   return (
-    <div className='flex'>
+    <div className='flex w-full items-center'>
       <button
+        type='button'
         role={disabled ? 'none' : 'menuitem'}
         aria-label={
           toggled !== undefined ? `${label} - ${toggled ? _('ON') : _('OFF')}` : undefined
         }
         aria-live={toggled === undefined ? 'polite' : 'off'}
         tabIndex={disabled ? -1 : 0}
-        className={clsx(
-          'hover:bg-base-300 text-base-content flex w-full flex-col items-center justify-center rounded-md p-1 py-[10px]',
-          disabled && 'btn-disabled text-gray-400',
-          buttonClass,
-        )}
+        className={baseItemClasses}
         title={tooltip ? tooltip : ''}
         onClick={handleClick}
         disabled={disabled}

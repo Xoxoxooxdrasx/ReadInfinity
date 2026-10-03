@@ -84,8 +84,6 @@ export const AboutWindow = () => {
 
   const versionInfo = `${_('Version {{version}}', { version: getAppVersion() })} (${browserInfo})`;
 
-  // Mobile users can't select the version string to paste it into a bug
-  // report, so the label itself copies it.
   const handleCopyVersion = async () => {
     const copied = await writeTextToClipboard(versionInfo);
     if (!copied) return;
@@ -103,83 +101,95 @@ export const AboutWindow = () => {
       isOpen={isOpen}
       title={_('About Read∞')}
       onClose={handleClose}
-      boxClassName='sm:!w-[480px] sm:!max-w-screen-sm sm:h-auto'
+      boxClassName='sm:!w-[480px] sm:!max-w-screen-sm sm:h-auto !rounded-3xl shadow-2xl bg-neutral-50/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-neutral-200/50 dark:border-neutral-800/50'
     >
       {isOpen && (
-        <div className='about-content flex flex-col items-center justify-center gap-4 pb-10 sm:pb-0'>
-          <div className='flex flex-1 flex-col items-center justify-end gap-2 px-8 py-2'>
-            <div className='mb-2 mt-6'>
+        <div className='about-content flex flex-col items-center justify-center gap-4 pb-8 sm:pb-2'>
+          <div className='flex flex-1 flex-col items-center justify-end gap-3 px-8 py-2'>
+            {/* M3 Tonal App Icon Container */}
+            <div className='mb-2 mt-4 rounded-2xl bg-primary/10 p-3 shadow-sm'>
               <Image
                 src='/icon.png'
                 alt='Read∞ icon'
-                className='h-20 w-20'
+                className='h-16 w-16 drop-shadow-md'
                 width={64}
                 height={64}
               />
             </div>
+
             <div className='flex select-text flex-col items-center'>
-              <h2 className='mb-2 text-2xl font-bold'>Read∞</h2>
+              <h2 className='text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100'>
+                Read∞
+              </h2>
+              {/* M3 Version Pill / Chip */}
               <button
                 type='button'
                 title={_('Copy')}
-                className='text-neutral-content text-center text-sm'
+                className='mt-1 rounded-full bg-neutral-200/60 dark:bg-neutral-800/60 px-3 py-1 text-center text-xs font-medium text-neutral-700 dark:text-neutral-300 transition-colors hover:bg-neutral-300/60 dark:hover:bg-neutral-700/60'
                 onClick={handleCopyVersion}
               >
                 {versionInfo}
               </button>
             </div>
-            <div className='my-1 h-5'>
+
+            <div className='my-2 flex min-h-[36px] items-center justify-center'>
               {!updateStatus && (
+                /* M3 Filled Rounded Pill Button */
                 <button
-                  className='btn btn-sm btn-primary cursor-pointer p-1 text-xs'
+                  className='rounded-full bg-primary px-5 py-2 text-xs font-medium text-primary-content shadow-sm transition-all duration-200 hover:shadow-md active:scale-95'
                   onClick={appService?.hasUpdater ? handleCheckUpdate : handleShowRecentUpdates}
                 >
                   {_('Check Update')}
                 </button>
               )}
               {updateStatus === 'updated' && (
-                <p className='text-neutral-content mt-2 text-xs'>
+                <span className='rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400'>
                   {_('Already the latest version')}
-                </p>
+                </span>
               )}
               {updateStatus === 'checking' && (
-                <p className='text-neutral-content mt-2 text-xs'>{_('Checking for updates...')}</p>
+                <span className='text-xs font-medium text-neutral-500 dark:text-neutral-400 animate-pulse'>
+                  {_('Checking for updates...')}
+                </span>
               )}
               {updateStatus === 'error' && (
-                <p className='text-error mt-2 text-xs'>{_('Error checking for updates')}</p>
+                <span className='rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-600 dark:text-red-400'>
+                  {_('Error checking for updates')}
+                </span>
               )}
             </div>
           </div>
 
-          <hr aria-hidden='true' className='border-base-300 my-12 w-full sm:my-4' />
+          {/* M3 Outline Variant Divider */}
+          <hr aria-hidden='true' className='my-2 w-full border-t border-neutral-200/50 dark:border-neutral-800/50' />
 
           <div
-            className='flex flex-1 flex-col items-center justify-start gap-2 px-4 text-center'
+            className='flex flex-1 flex-col items-center justify-start gap-2.5 px-6 text-center text-xs text-neutral-600 dark:text-neutral-400'
             dir='ltr'
           >
-            <p className='text-neutral-content text-sm'>
-              Created by <strong>InfinityZ-Lab</strong>.
+            <p className='text-sm text-neutral-800 dark:text-neutral-200'>
+              Created by <strong className='font-semibold'>InfinityZ-Lab</strong>.
             </p>
-            <p className='text-neutral-content text-sm'>
+            <p className='text-xs'>
               © {new Date().getFullYear()} ZHINFINITY. All rights reserved.
             </p>
 
-            <p className='text-neutral-content text-xs'>
+            <p className='leading-relaxed'>
               This software is licensed under the{' '}
               <Link
                 href='https://www.gnu.org/licenses/agpl-3.0.html'
-                className='text-blue-500 underline'
+                className='font-medium text-primary underline underline-offset-2'
               >
                 GNU Affero General Public License v3.0
               </Link>
               . You are free to use, modify, and distribute this software under the terms of the
-              AGPL v3 license. Please see the license for more details.
+              AGPL v3 license.
             </p>
-            <p className='text-neutral-content text-xs'>
+            <p>
               Source code is available at{' '}
               <Link
                 href='https://github.com/ZHINFINITY/ReadInfinity'
-                className='text-blue-500 underline'
+                className='font-medium text-primary underline underline-offset-2'
               >
                 GitHub
               </Link>

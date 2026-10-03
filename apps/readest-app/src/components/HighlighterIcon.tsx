@@ -1,17 +1,16 @@
+import React from 'react';
 import { IconBaseProps } from 'react-icons';
 import { GenIcon } from 'react-icons/lib';
 
 export function HighlighterIcon({
-  tipColor = '#FFD700',
+  tipColor = '#FACC15',
   tipStyle = {},
   ...props
 }: IconBaseProps & { tipColor?: string; tipStyle?: React.CSSProperties }) {
   return GenIcon({
     tag: 'svg',
     attr: {
-      // Tight vertical crop: the artwork spans y 8–224, so the default
-      // `0 0 256 256` left a 32px gap below and only 8px above. Cropping to
-      // the artwork's vertical bounds removes the asymmetric bottom padding.
+      // Cropped to art bounds to prevent asymmetric padding in M3 icon buttons
       viewBox: '0 8 256 202',
       fill: 'none',
     },

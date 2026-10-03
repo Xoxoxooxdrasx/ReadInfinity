@@ -63,7 +63,7 @@ const ClipSignInAlert: React.FC = () => {
 
   return (
     <div
-      className='fixed bottom-0 left-0 right-0 z-50 flex justify-center'
+      className='fixed bottom-0 left-0 right-0 z-[140] flex justify-center px-4 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 pointer-events-auto'
       style={{ paddingBottom: `${(safeAreaInsets?.bottom || 0) + 16}px` }}
     >
       <Alert
@@ -73,7 +73,7 @@ const ClipSignInAlert: React.FC = () => {
           { host },
         )}
         confirmLabel={_('Open Page')}
-        confirmButtonClassName='btn-contrast'
+        confirmButtonClassName='bg-primary text-primary-content hover:bg-primary/90 dark:bg-primary dark:text-primary-content rounded-full px-5 py-2 font-medium shadow-sm transition-all duration-200 hover:shadow active:scale-95'
         onCancel={() => respond(false)}
         onConfirm={() => respond(true)}
       />

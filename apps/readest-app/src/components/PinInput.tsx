@@ -29,22 +29,27 @@ export interface PinInputHandle {
 const PinDot = ({ filled, active }: { filled: boolean; active: boolean }) => (
   <div
     className={clsx(
-      'eink-bordered relative flex h-12 w-10 items-center justify-center rounded-lg border',
-      'border-base-content/20 bg-base-200/60',
-      filled && 'border-base-content/40',
-      active && 'border-base-content/40',
+      'eink-bordered relative flex h-14 w-12 items-center justify-center rounded-2xl border transition-all duration-200',
+      // Base Surface Container
+      'bg-neutral-200/50 dark:bg-neutral-800/50',
+      // M3 State Layers
+      active
+        ? 'border-primary ring-2 ring-primary/25 bg-neutral-200/80 dark:bg-neutral-800/80'
+        : filled
+          ? 'border-neutral-400/50 dark:border-neutral-600/50'
+          : 'border-neutral-300/40 dark:border-neutral-700/40',
     )}
   >
     <span
       className={clsx(
-        'inline-block h-3 w-3 rounded-full transition-opacity',
-        filled ? 'bg-base-content opacity-100' : 'opacity-0',
+        'inline-block h-3.5 w-3.5 rounded-full bg-primary transition-all duration-150',
+        filled ? 'scale-100 opacity-100' : 'scale-50 opacity-0',
       )}
     />
     {active && !filled && (
       <span
         aria-hidden='true'
-        className='bg-base-content animate-pin-cursor-blink absolute bottom-2 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full'
+        className='absolute bottom-3 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-primary animate-pulse'
       />
     )}
   </div>
@@ -109,7 +114,7 @@ const PinInput = forwardRef<PinInputHandle, PinInputProps>(function PinInput(
         aria-label={ariaLabel}
         className='absolute inset-0 z-10 cursor-pointer opacity-0'
       />
-      <div className={clsx('flex gap-3', shake && 'animate-pin-shake')}>
+      <div className={clsx('flex gap-3.5', shake && 'animate-pin-shake')}>
         {Array.from({ length: PIN_LENGTH }).map((_dot, i) => (
           <PinDot
             key={i}

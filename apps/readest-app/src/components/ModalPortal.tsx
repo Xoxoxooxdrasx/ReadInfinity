@@ -19,8 +19,9 @@ const ModalPortal: React.FC<ModalPortalProps> = ({ children, showOverlay = true 
     <div
       data-capture-blocking-overlay='true'
       className={clsx(
-        'fixed inset-0 isolate z-[120] flex items-center justify-center',
-        showOverlay && 'bg-black bg-opacity-50',
+        'fixed inset-0 isolate z-[120] flex items-center justify-center p-4 sm:p-6',
+        showOverlay &&
+          'bg-neutral-950/40 backdrop-blur-[2px] transition-opacity duration-200 ease-out',
       )}
       style={{ transform: 'translateZ(0)' }}
     >

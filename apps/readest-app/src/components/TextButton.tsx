@@ -21,36 +21,41 @@ const TextButton: React.FC<TextButtonProps> = ({
   type = 'button',
 }) => {
   const variantClasses = {
-    primary: 'text-blue-500 hover:text-blue-600',
-    secondary: 'text-gray-500 hover:text-gray-600',
-    danger: 'text-red-500 hover:text-red-600',
-    success: 'text-green-500 hover:text-green-600',
+    primary:
+      'text-primary hover:bg-primary/10 active:bg-primary/15',
+    secondary:
+      'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-500/10 active:bg-neutral-500/15',
+    danger:
+      'text-red-600 dark:text-red-400 hover:bg-red-500/10 active:bg-red-500/15',
+    success:
+      'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 active:bg-emerald-500/15',
   };
 
   const sizeClasses = {
-    sm: 'font-size-sm h-[1.3em] min-h-[1.3em]',
-    md: 'font-size-md h-[1.5em] min-h-[1.5em]',
-    lg: 'font-size-lg h-[1.8em] min-h-[1.8em]',
+    sm: 'h-8 px-2.5 text-xs font-medium',
+    md: 'h-9 px-3 text-sm font-medium',
+    lg: 'h-10 px-4 text-base font-medium',
   };
 
   return (
     <button
       type={type}
       className={clsx(
-        'content settings-content btn btn-ghost hover:bg-transparent',
-        'flex items-end p-0',
+        // M3 Text Button Base & Pill State Layer
+        'inline-flex items-center justify-center rounded-full transition-all duration-150 select-none',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+        'active:scale-[0.98]',
         sizeClasses[size],
-        disabled ? 'btn-disabled !bg-opacity-0' : '',
+        variantClasses[variant],
+        disabled && 'pointer-events-none opacity-40 cursor-not-allowed !bg-transparent',
         className,
       )}
       onClick={onClick}
       disabled={disabled}
     >
-      <div
-        className={clsx('align-bottom', sizeClasses[size].split(' ')[0], variantClasses[variant])}
-      >
+      <span className='inline-flex items-center justify-center truncate'>
         {children}
-      </div>
+      </span>
     </button>
   );
 };

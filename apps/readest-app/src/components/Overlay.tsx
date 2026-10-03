@@ -24,7 +24,13 @@ export const Overlay: React.FC<OverlayProps> = ({
   return (
     <div
       data-capture-blocking-overlay={captureBlocking ? 'true' : undefined}
-      className={clsx('overlay fixed inset-0 cursor-default', className)}
+      className={clsx(
+        // Base Layout & Touch Target
+        'overlay fixed inset-0 cursor-default transition-opacity duration-200 ease-out',
+        // Default M3 Scrim (applied unless overridden by caller e.g. 'bg-transparent')
+        !className?.includes('bg-') && 'bg-neutral-950/40 backdrop-blur-[1px]',
+        className,
+      )}
       role='none'
       // Pointer-only dismiss layer: hide it from screen readers so TalkBack /
       // VoiceOver don't land on an unlabeled full-screen node whose activation

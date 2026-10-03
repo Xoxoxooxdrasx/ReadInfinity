@@ -88,9 +88,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const [isFocused, setIsFocused] = useState(false);
 
-  // The menu stays CSS-anchored next to its toggle (screen readers and Tab
-  // traverse it in DOM order), so a menu near a screen edge can stick out of
-  // the viewport (#5259). Measure the open menu and shift it back inside.
+  // Measure the open menu and shift it back inside the viewport boundaries
   useLayoutEffect(() => {
     if (!isOpen) return undefined;
     const content = detailsRef.current?.querySelector<HTMLElement>(':scope > :not(summary)');
@@ -139,11 +137,6 @@ const Dropdown: React.FC<DropdownProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
-      // Let the native button click (dispatched by the browser for Enter/Space
-      // on a focused button) drive the toggle — toggling here would race with
-      // that click and cancel it out. We still stop propagation so global
-      // shortcuts bound to Enter/Space (e.g. next page in the reader) don't
-      // fire while a dropdown button is focused.
       e.stopPropagation();
     } else if (e.key === 'Escape') {
       setIsDropdownOpen(false);
@@ -155,7 +148,13 @@ const Dropdown: React.FC<DropdownProps> = ({
     ? React.cloneElement(children, {
         ...(typeof children.type !== 'string' && {
           setIsDropdownOpen,
-          menuClassName,
+          menuClassName: clsx(
+            // M3 Floating Menu Elevation & Appearance
+            'rounded-2xl shadow-xl bg-neutral-50/95 dark:bg-neutral-900/95 backdrop-blur-xl',
+            'border border-neutral-200/50 dark:border-neutral-800/60 p-1.5',
+            'animate-in fade-in zoom-in-95 duration-150 ease-out',
+            menuClassName,
+          ),
         }),
         children: enhanceMenuItems(children.props?.children, setIsDropdownOpen),
       })
@@ -163,7 +162,12 @@ const Dropdown: React.FC<DropdownProps> = ({
 
   return (
     <div ref={containerRef} className={clsx('dropdown-container flex', containerClassName)}>
-      {isOpen && <Overlay onDismiss={() => setIsDropdownOpen(false)} />}
+      {isOpen && (
+        <Overlay 
+          className='bg-transparent' 
+          onDismiss={() => setIsDropdownOpen(false)} 
+        />
+      )}
       <div className={clsx('relative', isOpen && 'z-50')}>
         <button
           tabIndex={0}
@@ -172,8 +176,9 @@ const Dropdown: React.FC<DropdownProps> = ({
           aria-label={label}
           title={showTooltip ? label : undefined}
           className={clsx(
-            'dropdown-toggle touch-target',
-            isFocused && isOpen && 'bg-base-300/50',
+            'dropdown-toggle touch-target relative inline-flex items-center justify-center rounded-full transition-all duration-200',
+            // M3 State layer on toggle active
+            isOpen ? 'bg-neutral-500/15 dark:bg-neutral-300/20' : 'hover:bg-neutral-500/10 active:bg-neutral-500/20 dark:hover:bg-neutral-400/15',
             buttonClassName,
           )}
           onClick={toggleDropdown}

@@ -19,7 +19,12 @@ const Menu: React.FC<MenuProps> = ({ children, className, style, onCancel }) => 
       ref={menuRef}
       role='none'
       className={clsx(
-        'menu-container max-h-[calc(100vh-96px)] overflow-y-auto border-0',
+        // Core Layout & Sizing
+        'menu-container max-h-[calc(100vh-96px)] overflow-y-auto',
+        // Material 3 Surface & Shape
+        'rounded-2xl p-1.5 shadow-xl transition-all duration-200',
+        'bg-neutral-50/95 dark:bg-neutral-900/95 backdrop-blur-xl',
+        'border border-neutral-200/50 dark:border-neutral-800/60',
         className,
       )}
       style={style}

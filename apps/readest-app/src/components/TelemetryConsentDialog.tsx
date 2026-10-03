@@ -1,5 +1,6 @@
 'use client';
 
+import clsx from 'clsx';
 import { LuCheck, LuChartLine, LuX } from 'react-icons/lu';
 
 import ModalPortal from '@/components/ModalPortal';
@@ -24,10 +25,6 @@ export default function TelemetryConsentDialog({ open, onClose }: TelemetryConse
 
   if (!open) return null;
 
-  // Persist `telemetryEnabled` via the settings store if it has already
-  // been seeded by the library/reader page; otherwise go straight through
-  // appService.loadSettings + saveSettings so we don't overwrite the on-disk
-  // file with a near-empty store snapshot.
   const persistTelemetryEnabled = async (value: boolean) => {
     const store = useSettingsStore.getState();
     if (store.settings && typeof store.settings.version === 'number') {
@@ -56,47 +53,50 @@ export default function TelemetryConsentDialog({ open, onClose }: TelemetryConse
 
   return (
     <ModalPortal>
-      <dialog className='modal modal-open'>
-        <div className='modal-box bg-base-100 w-[min(420px,calc(100vw-2rem))] rounded-2xl p-0'>
-          <div className='border-base-content/10 flex flex-col items-center gap-3 border-b px-6 pb-5 pt-7 text-center'>
+      <dialog className='modal modal-open' open>
+        <div className='modal-box relative w-[min(420px,calc(100vw-2rem))] rounded-[28px] border border-neutral-200/50 bg-neutral-50/95 p-0 shadow-2xl backdrop-blur-2xl dark:border-neutral-800/60 dark:bg-neutral-900/95 animate-in fade-in zoom-in-95 duration-200'>
+          {/* M3 Header Section */}
+          <div className='flex flex-col items-center gap-3 border-b border-neutral-200/50 px-6 pb-5 pt-7 text-center dark:border-neutral-800/50'>
             <div
-              className='eink-bordered bg-base-200 text-base-content/80 flex h-12 w-12 items-center justify-center rounded-full'
+              className='eink-bordered flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm'
               aria-hidden='true'
             >
-              <LuChartLine size={22} strokeWidth={1.75} />
+              <LuChartLine size={24} strokeWidth={1.8} />
             </div>
-            <h3 className='text-base-content text-base font-semibold tracking-tight'>
+            <h3 className='text-base font-semibold tracking-tight text-neutral-900 dark:text-neutral-100'>
               {_('Help improve Read∞')}
             </h3>
-            <p className='text-base-content/65 text-[13px] leading-relaxed'>
+            <p className='text-[13px] leading-relaxed text-neutral-600 dark:text-neutral-400'>
               {_(
                 'Share anonymous usage data so we can understand how Read∞ is used and make it better.',
               )}
             </p>
           </div>
 
-          <ul className='space-y-2.5 px-6 py-5'>
+          {/* Value Proposition List */}
+          <ul className='space-y-3 px-6 py-5'>
             <ConsentRow kind='positive' label={_('Anonymous, aggregated feature usage')} />
             <ConsentRow kind='negative' label={_('No personal information')} />
             <ConsentRow kind='negative' label={_('No book content or reading data')} />
           </ul>
 
-          <div className='border-base-content/10 flex flex-col gap-2 border-t px-6 py-4'>
+          {/* M3 Actions Footer */}
+          <div className='flex flex-col gap-2 border-t border-neutral-200/50 px-6 py-4 dark:border-neutral-800/50'>
             <button
               type='button'
               onClick={accept}
-              className='btn btn-contrast h-10 min-h-0 rounded-xl text-sm font-medium'
+              className='inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-primary-content shadow-sm transition-all duration-150 hover:shadow active:scale-95'
             >
               {_('Share anonymous data')}
             </button>
             <button
               type='button'
               onClick={decline}
-              className='eink-bordered text-base-content hover:bg-base-200 h-10 rounded-xl border border-transparent text-sm font-medium transition-colors'
+              className='eink-bordered inline-flex h-10 items-center justify-center rounded-full text-sm font-medium text-neutral-700 transition-colors duration-150 hover:bg-neutral-500/10 active:bg-neutral-500/16 dark:text-neutral-300 dark:hover:bg-neutral-400/12 dark:active:bg-neutral-400/18'
             >
               {_('Not now')}
             </button>
-            <p className='text-base-content/55 pt-1 text-center text-[11px]'>
+            <p className='pt-1 text-center text-[11px] text-neutral-500 dark:text-neutral-400'>
               {_('You can change this anytime in Settings.')}
             </p>
           </div>
@@ -108,26 +108,23 @@ export default function TelemetryConsentDialog({ open, onClose }: TelemetryConse
 
 function ConsentRow({ kind, label }: { kind: 'positive' | 'negative'; label: string }) {
   const isPositive = kind === 'positive';
-  // Positive: filled disc. We deliberately skip `eink-bordered` here so the
-  // eink override that paints `bg-base-content` solid wins, keeping the row
-  // visually distinct from the negative (outlined) rows on e-paper.
-  // Negative: outlined disc — `eink-bordered` flips to base-100 + 1px border
-  // under eink, and `border-base-content/15` carries the boundary on color
-  // themes.
+
   return (
     <li className='flex items-center gap-3'>
       <span
-        className={
-          'flex h-6 w-6 shrink-0 items-center justify-center rounded-full ' +
-          (isPositive
-            ? 'bg-base-content text-base-100'
-            : 'eink-bordered border-base-content/15 text-base-content/70 border')
-        }
+        className={clsx(
+          'flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors',
+          isPositive
+            ? 'bg-emerald-600/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+            : 'eink-bordered border border-neutral-300/70 text-neutral-500 dark:border-neutral-700/70 dark:text-neutral-400',
+        )}
         aria-hidden='true'
       >
         {isPositive ? <LuCheck size={14} strokeWidth={2.5} /> : <LuX size={14} strokeWidth={2.5} />}
       </span>
-      <span className='text-base-content/85 text-[13px] leading-snug'>{label}</span>
+      <span className='text-[13px] font-medium leading-snug text-neutral-800 dark:text-neutral-200'>
+        {label}
+      </span>
     </li>
   );
 }

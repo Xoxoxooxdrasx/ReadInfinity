@@ -22,14 +22,23 @@ interface WindowButtonProps {
   id: string;
   onClick: () => void;
   label: string;
+  isClose?: boolean;
   children: React.ReactNode;
 }
 
-const WindowButton: React.FC<WindowButtonProps> = ({ onClick, label, id, children }) => (
+const WindowButton: React.FC<WindowButtonProps> = ({ onClick, label, id, isClose, children }) => (
   <button
     id={id}
+    type='button'
     onClick={onClick}
-    className='window-button bg-base-200/35 hover:bg-base-200 text-base-content/85 hover:text-base-content'
+    className={clsx(
+      // M3 Circular Icon Button
+      'window-button inline-flex h-8 w-8 items-center justify-center rounded-full transition-all duration-150 select-none active:scale-95',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+      isClose
+        ? 'text-neutral-700 hover:bg-rose-500/15 hover:text-rose-600 active:bg-rose-500/25 dark:text-neutral-300 dark:hover:bg-rose-500/20 dark:hover:text-rose-400'
+        : 'text-neutral-700 hover:bg-neutral-500/12 hover:text-neutral-900 active:bg-neutral-500/20 dark:text-neutral-300 dark:hover:bg-neutral-400/15 dark:hover:text-neutral-100',
+    )}
     aria-label={label}
   >
     {children}
@@ -194,14 +203,14 @@ const WindowButtons: React.FC<WindowButtonsProps> = ({
     <div
       ref={parentRef}
       className={clsx(
-        'window-buttons flex h-8 items-center justify-end space-x-2',
+        'window-buttons flex h-8 items-center justify-end gap-1.5',
         showClose || showMaximize || showMinimize ? 'visible' : 'hidden',
         className,
       )}
     >
       {showMinimize && appService?.hasWindowBar && (
         <WindowButton onClick={handleMinimize} label={_('Minimize')} id='titlebar-minimize'>
-          <svg xmlns='http://www.w3.org/2000/svg' width='1em' height='1em' viewBox='0 0 24 24'>
+          <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'>
             <path fill='currentColor' d='M20 14H4v-2h16' />
           </svg>
         </WindowButton>
@@ -213,7 +222,7 @@ const WindowButtons: React.FC<WindowButtonsProps> = ({
           label={_('Maximize or Restore')}
           id='titlebar-maximize'
         >
-          <svg xmlns='http://www.w3.org/2000/svg' width='1em' height='1em' viewBox='0 0 24 24'>
+          <svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24'>
             <path fill='currentColor' d='M4 4h16v16H4zm2 4v10h12V8z' />
           </svg>
         </WindowButton>
@@ -224,8 +233,9 @@ const WindowButtons: React.FC<WindowButtonsProps> = ({
           onClick={handleClose}
           label={closeButtonLabel || _('Close')}
           id='titlebar-close'
+          isClose
         >
-          <svg xmlns='http://www.w3.org/2000/svg' width='1em' height='1em' viewBox='0 0 24 24'>
+          <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'>
             <path
               fill='currentColor'
               d='M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z'

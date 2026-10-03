@@ -73,15 +73,20 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
 
   return (
     <div
-      className='relative flex h-full w-full items-center justify-center rounded-full'
-      style={fillContainer ? undefined : { width: size, height: size }}
+      className={clsx(
+        'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full',
+        'bg-neutral-200/70 dark:bg-neutral-800/70',
+        'ring-1 ring-neutral-300/40 dark:ring-neutral-700/50',
+        borderClassName,
+      )}
+      style={fillContainer ? { width: '100%', height: '100%' } : { width: size, height: size }}
     >
       {url ? (
-        <div>
+        <div className='relative h-full w-full'>
           <Image
             src={cachedImageUrl || url}
             alt='User Avatar'
-            className={clsx('rounded-full', className, borderClassName)}
+            className={clsx('h-full w-full rounded-full object-cover', className)}
             referrerPolicy='no-referrer'
             width={size}
             height={size}
@@ -91,11 +96,17 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
             }}
           />
           <div className='invisible absolute inset-0 flex items-center justify-center'>
-            <DefaultIcon className={clsx('text-neutral-content', className)} />
+            <DefaultIcon
+              className={clsx('text-neutral-500 dark:text-neutral-400', className)}
+              size={Math.round(size * 0.55)}
+            />
           </div>
         </div>
       ) : (
-        <DefaultIcon className='text-neutral-content' size={size} />
+        <DefaultIcon
+          className={clsx('text-neutral-500 dark:text-neutral-400', className)}
+          size={Math.round(size * 0.55)}
+        />
       )}
     </div>
   );

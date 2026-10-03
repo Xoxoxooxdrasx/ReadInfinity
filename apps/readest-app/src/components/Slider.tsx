@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import React, { useEffect, useRef, useState } from 'react';
 
 interface SliderProps {
@@ -45,6 +46,7 @@ const Slider: React.FC<SliderProps> = ({
 }) => {
   const [value, setValue] = useState(initialValue);
   const [isRtl, setIsRtl] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
 
   // Default linear mapping functions
@@ -90,15 +92,16 @@ const Slider: React.FC<SliderProps> = ({
     <div
       ref={sliderRef}
       aria-label={label}
-      className={`slider bg-base-200 mx-auto w-full rounded-xl ${className}`}
+      className={clsx('slider mx-auto w-full select-none', className)}
       dir={isRtl ? 'rtl' : undefined}
     >
       <div className='relative' style={{ height: `${heightPx}px` }}>
-        {/* Background track */}
-        <div className='bg-base-300/40 absolute h-full w-full rounded-full'></div>
-        {/* Filled portion */}
+        {/* M3 Inactive Track Surface */}
+        <div className='absolute inset-0 h-full w-full rounded-full border border-neutral-300/40 bg-neutral-200/80 transition-colors dark:border-neutral-700/50 dark:bg-neutral-800/80' />
+
+        {/* M3 Active Tonal / Primary Fill */}
         <div
-          className='bg-base-300 absolute h-full rounded-full'
+          className='absolute h-full rounded-full bg-primary/20 dark:bg-primary/25 transition-all duration-75'
           style={{
             width:
               visualPercentage > 0
@@ -106,15 +109,17 @@ const Slider: React.FC<SliderProps> = ({
                 : '0px',
             [isRtl ? 'right' : 'left']: 0,
           }}
-        ></div>
-        {/* Min/Max labels */}
-        <div className='absolute inset-0 flex items-center justify-between px-4 text-sm'>
-          {minIcon ? minIcon : <span className={`ml-2 ${minClassName}`}>{minLabel}</span>}
-          {maxIcon ? maxIcon : <span className={`mr-2 ${maxClassName}`}>{maxLabel}</span>}
+        />
+
+        {/* Min/Max Ambient Labels & Icons */}
+        <div className='pointer-events-none absolute inset-0 flex items-center justify-between px-4 text-xs font-semibold text-neutral-600 dark:text-neutral-400'>
+          {minIcon ? minIcon : <span className={clsx('ml-1', minClassName)}>{minLabel}</span>}
+          {maxIcon ? maxIcon : <span className={clsx('mr-1', maxClassName)}>{maxLabel}</span>}
         </div>
-        {/* Thumb bubble */}
+
+        {/* M3 Floating Thumb Bubble Handle */}
         <div
-          className='pointer-events-none absolute top-0 z-10'
+          className='pointer-events-none absolute top-0 z-10 transition-transform duration-75'
           style={{
             [isRtl ? 'right' : 'left']: `max(${heightPx / 2}px, calc(${visualPercentage}%))`,
             transform: isRtl ? 'translateX(calc(50%))' : 'translateX(calc(-50%))',
@@ -122,12 +127,20 @@ const Slider: React.FC<SliderProps> = ({
           }}
         >
           <div
-            className={`bg-base-200 flex h-full items-center justify-center rounded-full text-xs shadow-md ${bubbleClassName}`}
+            className={clsx(
+              'flex h-full items-center justify-center rounded-full text-xs font-semibold tracking-tight transition-all duration-150',
+              'bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100',
+              'border border-neutral-300/50 dark:border-neutral-700/60 shadow-md',
+              isDragging && 'scale-105 shadow-lg ring-4 ring-primary/20',
+              bubbleClassName,
+            )}
             style={{ width: `${heightPx}px` }}
           >
             {bubbleElement || bubbleLabel}
           </div>
         </div>
+
+        {/* Hidden Accessible Native Range Control */}
         <input
           type='range'
           min={0}
@@ -136,6 +149,10 @@ const Slider: React.FC<SliderProps> = ({
           value={percentage}
           className='slider-input absolute inset-0 h-full min-h-12 w-full cursor-pointer opacity-0'
           onChange={handleChange}
+          onMouseDown={() => setIsDragging(true)}
+          onMouseUp={() => setIsDragging(false)}
+          onTouchStart={() => setIsDragging(true)}
+          onTouchEnd={() => setIsDragging(false)}
           aria-label={label}
           aria-valuemin={min}
           aria-valuemax={max}

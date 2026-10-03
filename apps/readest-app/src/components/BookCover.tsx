@@ -109,7 +109,10 @@ const BookCover: React.FC<BookCoverProps> = memo<BookCoverProps>(
     return (
       <div
         ref={coverRef}
-        className={clsx('book-cover-container relative flex h-full w-full', className)}
+        className={clsx(
+          'book-cover-container relative flex h-full w-full overflow-hidden rounded-xl shadow-sm transition-all duration-200',
+          className,
+        )}
       >
         {coverFit === 'crop' ? (
           <>
@@ -121,8 +124,8 @@ const BookCover: React.FC<BookCoverProps> = memo<BookCoverProps>(
                 loading='lazy'
                 draggable={false}
                 className={clsx(
-                  'cover-image crop-cover-img object-cover',
-                  imageError && 'invisible',
+                  'cover-image crop-cover-img rounded-xl object-cover transition-opacity duration-300',
+                  imageError ? 'invisible' : 'opacity-100',
                   imageClassName,
                 )}
                 onLoad={handleImageLoad}
@@ -130,14 +133,16 @@ const BookCover: React.FC<BookCoverProps> = memo<BookCoverProps>(
               />
             )}
             <div
-              className={`book-spine absolute inset-0 ${shouldShowSpine ? 'visible' : 'invisible'}`}
+              className={`book-spine absolute inset-0 rounded-xl ${
+                shouldShowSpine ? 'visible' : 'invisible'
+              }`}
             />
           </>
         ) : (
-          <div className={clsx('flex h-full w-full justify-start')}>
+          <div className='flex h-full w-full justify-start'>
             <div
               className={clsx(
-                'flex h-full max-h-full items-end',
+                'flex h-full max-h-full',
                 mode === 'grid' ? 'items-end' : 'items-center',
               )}
             >
@@ -151,8 +156,8 @@ const BookCover: React.FC<BookCoverProps> = memo<BookCoverProps>(
                   loading='lazy'
                   draggable={false}
                   className={clsx(
-                    'cover-image fit-cover-img h-auto max-h-full w-auto max-w-full shadow-md',
-                    imageError && 'invisible',
+                    'cover-image fit-cover-img h-auto max-h-full w-auto max-w-full rounded-xl shadow-md transition-opacity duration-300',
+                    imageError ? 'invisible' : 'opacity-100',
                     imageClassName,
                   )}
                   onLoad={handleImageLoad}
@@ -160,37 +165,41 @@ const BookCover: React.FC<BookCoverProps> = memo<BookCoverProps>(
                 />
               )}
               <div
-                className={`book-spine absolute inset-0 ${shouldShowSpine ? 'visible' : 'invisible'}`}
+                className={`book-spine absolute inset-0 rounded-xl ${
+                  shouldShowSpine ? 'visible' : 'invisible'
+                }`}
               />
             </div>
           </div>
         )}
 
+        {/* Material 3 Fallback Book Cover Surface */}
         <div
           className={clsx(
-            'fallback-cover absolute inset-0 p-2',
+            'fallback-cover absolute inset-0 flex flex-col justify-between p-3.5 rounded-xl border border-neutral-200/50 dark:border-neutral-800/50',
             displayCoverUrl && !imageError && 'invisible',
-            'text-neutral-content text-center font-serif font-medium',
-            isPreview ? 'bg-base-200/50' : 'bg-base-100',
+            isPreview
+              ? 'bg-neutral-200/40 dark:bg-neutral-800/40'
+              : 'bg-neutral-100 dark:bg-neutral-900',
             imageClassName,
           )}
         >
-          <div className='flex h-1/2 items-center justify-center'>
+          <div className='flex h-1/2 items-center justify-center text-center'>
             <span
               className={clsx(
-                isPreview ? 'line-clamp-2' : mode === 'grid' ? 'line-clamp-3' : 'line-clamp-2',
-                isPreview ? 'text-[0.5em]' : mode === 'grid' ? 'text-lg' : 'text-sm',
+                'font-serif font-semibold tracking-tight text-neutral-800 dark:text-neutral-200',
+                isPreview ? 'line-clamp-2 text-[0.55em]' : mode === 'grid' ? 'line-clamp-3 text-base' : 'line-clamp-2 text-sm',
               )}
             >
               {formatTitle(book.title)}
             </span>
           </div>
-          <div className='h-1/6'></div>
-          <div className='flex h-1/3 items-center justify-center'>
+
+          <div className='flex h-1/3 items-end justify-center text-center pb-1'>
             <span
               className={clsx(
-                'text-neutral-content/50 line-clamp-1',
-                isPreview ? 'text-[0.4em]' : mode === 'grid' ? 'text-base' : 'text-xs',
+                'line-clamp-1 font-sans text-xs text-neutral-500 dark:text-neutral-400',
+                isPreview && 'text-[0.45em]',
               )}
             >
               {formatAuthors(book.author || book.metadata?.author || '')}

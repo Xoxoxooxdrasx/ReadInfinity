@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAtmosphereStore } from '@/store/atmosphereStore';
 import { useThemeStore } from '@/store/themeStore';
 
@@ -10,6 +10,7 @@ const AtmosphereOverlay = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const isInitialMount = useRef(true);
+  const [videoLoaded, setVideoLoaded] = useState(false);
 
   const audioSrc = isDarkMode ? '/assets/forest-crickets.mp3' : '/assets/forest-birds.mp3';
 
@@ -25,6 +26,7 @@ const AtmosphereOverlay = () => {
       }
     } else {
       document.body.classList.remove('atmosphere');
+      setVideoLoaded(false);
     }
     isInitialMount.current = false;
   }, [active]);
@@ -40,15 +42,27 @@ const AtmosphereOverlay = () => {
   return (
     <>
       {active && (
-        <video
-          ref={videoRef}
-          id='atmosphere-overlay'
-          src='/assets/komorebi.mp4'
-          loop
-          muted
-          playsInline
-          preload='none'
-        />
+        <div 
+          className='pointer-events-none fixed inset-0 z-0 overflow-hidden select-none transition-opacity duration-700 ease-out'
+          aria-hidden='true'
+        >
+          {/* M3 Ambient Video Container */}
+          <video
+            ref={videoRef}
+            id='atmosphere-overlay'
+            src='/assets/komorebi.mp4'
+            loop
+            muted
+            playsInline
+            preload='auto'
+            onLoadedData={() => setVideoLoaded(true)}
+            className={`h-full w-full object-cover transition-opacity duration-1000 ${
+              videoLoaded ? 'opacity-35 dark:opacity-20' : 'opacity-0'
+            }`}
+          />
+          {/* M3 Surface Scrim: Ensures readability of text and controls above the canvas */}
+          <div className='absolute inset-0 bg-neutral-100/40 dark:bg-neutral-950/60 backdrop-blur-[1px]' />
+        </div>
       )}
       {active && (
         // biome-ignore lint/a11y/useMediaCaption: ambient background audio, no spoken content

@@ -82,15 +82,13 @@ const TextEditor = forwardRef<TextEditorRef, TextEditorProps>(
         editorRef.current.style.height = 'auto';
         const scrollHeight = editorRef.current.scrollHeight;
 
-        // Calculate max height based on maxRows
         let maxHeight = Infinity;
         if (maxRows) {
-          const lineHeight = parseInt(getComputedStyle(editorRef.current).lineHeight);
+          const lineHeight = parseInt(getComputedStyle(editorRef.current).lineHeight, 10) || 20;
           maxHeight = lineHeight * maxRows;
         }
 
-        // Calculate min height based on minRows
-        const lineHeight = parseInt(getComputedStyle(editorRef.current).lineHeight) || 20;
+        const lineHeight = parseInt(getComputedStyle(editorRef.current).lineHeight, 10) || 20;
         const minHeight = lineHeight * minRows;
 
         const finalHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
@@ -120,9 +118,11 @@ const TextEditor = forwardRef<TextEditorRef, TextEditorProps>(
       <textarea
         ref={editorRef}
         className={clsx(
-          'textarea textarea-ghost min-h-[1em] resize-none !outline-none',
-          'inset-0 w-full rounded-none border-0 bg-transparent p-0',
-          'content font-size-sm',
+          // M3 Multi-line Input Base Typography & Insets
+          'w-full resize-none bg-transparent text-sm leading-relaxed outline-none transition-colors duration-150',
+          'text-neutral-900 placeholder:text-neutral-500/60 dark:text-neutral-100 dark:placeholder:text-neutral-400/50',
+          'border-0 p-0 focus:outline-none focus:ring-0',
+          disabled && 'cursor-not-allowed opacity-40',
           className,
         )}
         dir='auto'

@@ -91,12 +91,6 @@ const Popup = ({
     if (!containerRef.current) return;
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        // Measure the border box: contentRect is the content box, which
-        // under-reports by 2px when e-ink mode adds the 1px container border.
-        // The height positions the popup against the triangle attachment
-        // point, so a short measurement drops the popup onto the triangle and
-        // flips triangleHidden, hiding the white inner triangle behind the
-        // black outer one (solid black triangle on e-ink).
         const newHeight = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
         if (newHeight !== childrenHeight) {
           setChildrenHeight(newHeight);
@@ -129,7 +123,7 @@ const Popup = ({
     setAdjustedPosition(newPosition);
   }, [position, trianglePosition, popupPadding, childrenHeight]);
 
-  const triangleSize = 7;
+  const triangleSize = 8;
   const outerTriangleStyles = getTriangleStyles(trianglePosition, triangleSize, 0);
   const innerTriangleStyles = getTriangleStyles(trianglePosition, triangleSize, -1);
 
@@ -146,37 +140,29 @@ const Popup = ({
   );
 
   return (
-    // No `filter` (drop-shadow) on this wrapper: it would become the containing
-    // block and stacking context for the absolutely positioned popup below,
-    // re-anchoring it off the viewport and demoting its z-50 under later reader
-    // chrome. The triangle shadow lives on the triangle itself.
     <div>
-      {/* Never mount the triangles without a position, and never combine
-          `invisible` with the drop-shadow: FootnotePopup keeps a closed Popup
-          mounted in every book cell, and an always-mounted filtered element at
-          the cell origin makes WebKitGTK stop presenting an ~80x124 device-px
-          rect there — the Linux stale/black corner square (#5609, bisected to
-          #5351's triangle filter). */}
+      {/* Outer Triangle (Border stroke & shadow) */}
       {trianglePosition && (
         <div
           className={clsx(
-            'popup-triangle-outer text-base-content/20 absolute z-50',
-            triangleHidden ? 'invisible' : 'not-eink:drop-shadow-xl visible',
+            'popup-triangle-outer absolute z-50 text-neutral-300/60 dark:text-neutral-700/60',
+            triangleHidden ? 'invisible' : 'not-eink:drop-shadow-lg visible',
           )}
           style={outerTriangleStyles}
         />
       )}
+
+      {/* M3 Floating Popup Surface */}
       <div
         id='popup-container'
         ref={containerRef}
         aria-hidden={!isOpen}
         data-capture-blocking-overlay={isOpen ? 'true' : undefined}
-        // `[data-eink] .popup-container` in globals.css already forces the 1px
-        // base-content border and base-100 background, so no eink-bordered here.
         className={clsx(
-          'popup-container text-base-content absolute z-50 rounded-lg border font-sans',
-          'not-eink:border-base-content/20 not-eink:shadow-2xl',
-          'bg-base-300 theme-dark:bg-base-100',
+          // M3 Container Shape & Elevation
+          'popup-container absolute z-50 rounded-2xl font-sans transition-all duration-200',
+          'bg-neutral-50/95 dark:bg-neutral-900/95 backdrop-blur-2xl text-neutral-900 dark:text-neutral-100',
+          'border border-neutral-200/50 dark:border-neutral-800/60 shadow-2xl',
           className,
         )}
         style={{
@@ -191,10 +177,12 @@ const Popup = ({
       >
         {children}
       </div>
+
+      {/* Inner Triangle (Surface fill matching M3 container background) */}
       {trianglePosition && (
         <div
           className={clsx(
-            'popup-triangle-inner text-base-300 theme-dark:text-base-100 absolute z-50',
+            'popup-triangle-inner absolute z-50 text-neutral-50 dark:text-neutral-900',
             triangleHidden ? 'invisible' : 'visible',
           )}
           style={innerTriangleStyles}
