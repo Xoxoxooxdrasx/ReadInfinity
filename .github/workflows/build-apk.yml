@@ -14,8 +14,34 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
+
+      - name: Fetch All Submodules Recursively
+        run: |
+          # Sync and force update all registered submodules
+          git submodule sync --recursive || true
+          git submodule update --init --recursive --force || true
+
+          # If tauri-plugin-turso submodule didn't clone, pull it directly
+          TURSO_DIR="apps/readest-app/src-tauri/plugins/tauri-plugin-turso"
+          if [ ! -f "$TURSO_DIR/Cargo.toml" ]; then
+            mkdir -p "$TURSO_DIR"
+            git clone --depth 1 https://github.com/daltonmenezes/tauri-plugin-turso.git "$TURSO_DIR" || true
+          fi
+
+          # Ensure foliate-js exists for pnpm workspace
+          mkdir -p packages/foliate-js
+          if [ ! -f "packages/foliate-js/package.json" ]; then
+            git clone --depth 1 https://github.com/johnfactotum/foliate-js.git packages/foliate-js || true
+            cat << 'EOF' > packages/foliate-js/package.json
+          {
+            "name": "foliate-js",
+            "version": "0.1.0",
+            "private": true,
+            "main": "view.js"
+          }
+          EOF
+          fi
 
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
@@ -43,23 +69,6 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm@9.15.4
 
-      - name: Link Foliate Workspace Package
-        run: |
-          git submodule sync --recursive || true
-          git submodule update --init --recursive --force || true
-          mkdir -p packages/foliate-js
-          if [ ! -f "packages/foliate-js/package.json" ]; then
-            git clone --depth 1 https://github.com/johnfactotum/foliate-js.git packages/foliate-js || true
-            cat << 'EOF' > packages/foliate-js/package.json
-          {
-            "name": "foliate-js",
-            "version": "0.1.0",
-            "private": true,
-            "main": "view.js"
-          }
-          EOF
-          fi
-
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
 
@@ -68,11 +77,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          projectPath: ./apps/readest-app
           args: --target aarch64-linux-android --debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ReadInfinity-aarch64-debug
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: apps/readest-app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
