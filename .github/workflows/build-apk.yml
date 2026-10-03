@@ -17,23 +17,10 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Prepare Foliate Submodule
+      - name: Sync and Update Submodules
         run: |
-          mkdir -p packages/foliate-js
-          if [ ! -f "packages/foliate-js/package.json" ]; then
-            git submodule update --init --recursive packages/foliate-js || true
-            if [ ! -f "packages/foliate-js/package.json" ]; then
-              git clone --depth 1 https://github.com/johnfactotum/foliate-js.git packages/foliate-js || true
-              cat << 'EOF' > packages/foliate-js/package.json
-          {
-            "name": "foliate-js",
-            "version": "0.1.0",
-            "private": true,
-            "main": "view.js"
-          }
-          EOF
-            fi
-          fi
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
 
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
@@ -61,13 +48,11 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm@9.15.4
 
-      - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Build Next.js Static Assets
+      - name: Install Dependencies & Run Setup
         run: |
-          pnpm run prebuild || true
-          pnpm --filter readest-app build || pnpm run build
+          pnpm install --no-frozen-lockfile
+          # Execute any package-level build / setup scripts if present
+          if pnpm run | grep -q "setup"; then pnpm run setup; fi
 
       - name: Build Tauri APK
         uses: tauri-apps/tauri-action@v0
