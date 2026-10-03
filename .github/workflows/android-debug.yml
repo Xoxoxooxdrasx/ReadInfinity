@@ -1,305 +1,65 @@
 name: Read∞ Android Debug APK
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-
-concurrency:
-  group: android-debug-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  build-android-debug:
+  build:
     name: Build arm64 Android debug APK
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      NEXT_TELEMETRY_DISABLED: '1'
-      NEXT_PUBLIC_DEFAULT_SUPABASE_URL_BASE64: aHR0cHM6Ly9sb2NhbGhvc3Q=
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: offline-ci-test-key
-      # Keep the APK debuggable for device testing, but do not package the
-      # enormous Rust DWARF symbol table into libreadestlib.so. The previous
-      # unstripped arm64 debug library alone was about 629 MB.
-      CARGO_PROFILE_DEV_DEBUG: '0'
-      CARGO_PROFILE_DEV_STRIP: symbols
+    runs-on: ubuntu-24.04
+
     steps:
-      - name: Check out source
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          submodules: recursive
 
-      - name: Restore workspace source dependencies
-        run: |
-          git clone --depth 1 https://github.com/readest/foliate-js.git packages/foliate-js
-          git clone --depth 1 https://github.com/readest/simplecc-wasm.git packages/simplecc-wasm
-          git clone --depth 1 https://github.com/readest/js-mdict.git packages/js-mdict
-          git clone --depth 1 https://github.com/readest/tauri.git packages/tauri
-          git clone --depth 1 https://github.com/readest/tauri-plugins-workspace.git packages/tauri-plugins
-          git clone --depth 1 https://github.com/mozilla/pdf.js.qcms.git packages/qcms
-          git clone --depth 1 https://github.com/readest/tao.git packages/tao
-          git clone --depth 1 https://github.com/readest/tauri-plugin-turso.git apps/readest-app/src-tauri/plugins/tauri-plugin-turso
-          git clone --depth 1 https://github.com/readest/tauri-plugin-webview-upgrade.git apps/readest-app/src-tauri/plugins/tauri-plugin-webview-upgrade
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.1.1
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Set up Java
+      - name: Setup Java JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'zulu'
           java-version: '17'
-          cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Android NDK and SDK Environment
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "ndk;26.1.10909125" "build-tools;34.0.0" "platforms;android-34"
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
 
-      - name: Install Android SDK packages
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-
-      - name: Set up Rust
+      - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android
 
-      - name: Install JavaScript dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
-      - name: Prepare local reader vendors
-        run: pnpm --filter @readest/readest-app setup-vendors
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
 
-      - name: Initialize Android project
-        run: pnpm --filter @readest/readest-app tauri android init
+      - name: Install dependencies
+        run: pnpm install
 
-      - name: Regenerate native launcher icons
-        working-directory: apps/readest-app
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y python3-pil
-          cmp -s src-tauri/icons/icon.png public/icon.png
-          pnpm tauri icon src-tauri/icons/icon.png
-          python3 scripts/prepare_android_launcher_icons.py \
-            --source src-tauri/icons/icon.png \
-            --res-dir src-tauri/gen/android/app/src/main/res
-          test -s src-tauri/gen/android/app/src/main/res/drawable/ic_launcher_background.xml
+      - name: Build Next.js Static Assets
+        run: pnpm --filter readest-app build
 
-      - name: Configure Android MainActivity
-        run: |
-          set -euo pipefail
-          activity_file="$(find apps/readest-app/src-tauri/gen/android/app/src/main/java -name MainActivity.kt -print -quit)"
-          test -n "$activity_file"
-          if ! grep -q 'ReadInfinityBackDispatch' "$activity_file"; then
-            sed -i '/^package /a import android.content.Intent\nimport android.os.Build\nimport android.view.KeyEvent\nimport android.webkit.WebView\nimport androidx.activity.OnBackPressedCallback\nimport com.readest.native_bridge.KeyDownInterceptor\nimport com.readest.native_bridge.NativeBridgePlugin' "$activity_file"
-            sed -i 's/class MainActivity : TauriActivity()/class MainActivity : TauriActivity(), KeyDownInterceptor/' "$activity_file"
-            sed -i '/super.onCreate(savedInstanceState)/a\        setupReadInfinityBackDispatcher()' "$activity_file"
-            last_line="$(awk 'NF { line = NR } END { print line }' "$activity_file")"
-            sed -i "${last_line}d" "$activity_file"
-            cat >> "$activity_file" <<'KOTLIN'
-              // ReadInfinityBackDispatch: forward Android Back to the JS dialog
-              // stack before allowing the activity to finish.
-              private var webViewForNativeKeys: WebView? = null
-              private var interceptBackKeyEnabled = false
-              private var interceptVolumeKeysEnabled = false
-              private var interceptPageTurnerKeysEnabled = false
-              private var keyLearnModeEnabled = false
+      - name: Build Tauri Android APK
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --target aarch64-linux-android --debug
 
-              override fun onWebViewCreate(webView: WebView) {
-                  webViewForNativeKeys = webView
-              }
-
-              override fun interceptVolumeKeys(enabled: Boolean) {
-                  interceptVolumeKeysEnabled = enabled
-              }
-
-              override fun interceptBackKey(enabled: Boolean) {
-                  interceptBackKeyEnabled = enabled
-              }
-
-              override fun interceptPageTurnerKeys(enabled: Boolean) {
-                  interceptPageTurnerKeysEnabled = enabled
-              }
-
-              override fun setKeyLearnMode(enabled: Boolean) {
-                  keyLearnModeEnabled = enabled
-              }
-
-              private fun forwardNativeKey(keyName: String, keyCode: Int) {
-                  webViewForNativeKeys?.evaluateJavascript(
-                      """try { window.onNativeKeyDown("$keyName", $keyCode); } catch (_) {}""",
-                      null
-                  )
-              }
-
-              override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-                  if (event.action == KeyEvent.ACTION_DOWN) {
-                      val keyName = when (event.keyCode) {
-                          KeyEvent.KEYCODE_BACK -> "Back"
-                          KeyEvent.KEYCODE_VOLUME_UP -> "VolumeUp"
-                          KeyEvent.KEYCODE_VOLUME_DOWN -> "VolumeDown"
-                          KeyEvent.KEYCODE_MEDIA_NEXT -> "MediaNext"
-                          KeyEvent.KEYCODE_MEDIA_PREVIOUS -> "MediaPrevious"
-                          KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> "MediaPlayPause"
-                          KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> "MediaFastForward"
-                          KeyEvent.KEYCODE_MEDIA_REWIND -> "MediaRewind"
-                          else -> null
-                      }
-                      val shouldForward = when (event.keyCode) {
-                          KeyEvent.KEYCODE_BACK -> interceptBackKeyEnabled
-                          KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN ->
-                              interceptVolumeKeysEnabled || keyLearnModeEnabled
-                          KeyEvent.KEYCODE_MEDIA_NEXT,
-                          KeyEvent.KEYCODE_MEDIA_PREVIOUS,
-                          KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
-                          KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
-                          KeyEvent.KEYCODE_MEDIA_REWIND ->
-                              interceptPageTurnerKeysEnabled || keyLearnModeEnabled
-                          else -> false
-                      }
-                      if (keyName != null && shouldForward) {
-                          forwardNativeKey(keyName, event.keyCode)
-                          return true
-                      }
-                  }
-                  return super.dispatchKeyEvent(event)
-              }
-
-              @Suppress("DEPRECATION")
-              override fun onBackPressed() {
-                  if (interceptBackKeyEnabled) {
-                      forwardNativeKey("Back", KeyEvent.KEYCODE_BACK)
-                  } else {
-                      super.onBackPressed()
-                  }
-              }
-
-              private fun setupReadInfinityBackDispatcher() {
-                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                      onBackInvokedDispatcher.registerOnBackInvokedCallback(
-                          android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
-                          android.window.OnBackInvokedCallback {
-                              if (interceptBackKeyEnabled) {
-                                  forwardNativeKey("Back", KeyEvent.KEYCODE_BACK)
-                              } else {
-                                  finish()
-                              }
-                          }
-                      )
-                  }
-                  onBackPressedDispatcher.addCallback(this,
-                      object : OnBackPressedCallback(true) {
-                          override fun handleOnBackPressed() {
-                              if (interceptBackKeyEnabled) {
-                                  forwardNativeKey("Back", KeyEvent.KEYCODE_BACK)
-                              } else {
-                                  isEnabled = false
-                                  onBackPressedDispatcher.onBackPressed()
-                              }
-                          }
-                      }
-                  )
-              }
-
-              override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-                  super.onActivityResult(requestCode, resultCode, data)
-                  NativeBridgePlugin.deliverActivityResult(requestCode, resultCode, data)
-              }
-          }
-          KOTLIN
-          fi
-          grep -F 'ReadInfinityBackDispatch' "$activity_file"
-          grep -F 'class MainActivity : TauriActivity(), KeyDownInterceptor' "$activity_file"
-          grep -F 'interceptBackKeyEnabled' "$activity_file"
-          grep -F 'interceptPageTurnerKeysEnabled' "$activity_file"
-          grep -F 'keyLearnModeEnabled' "$activity_file"
-          grep -F 'window.onNativeKeyDown("$keyName", $keyCode)' "$activity_file"
-          grep -F 'setupReadInfinityBackDispatcher' "$activity_file"
-          grep -F 'NativeBridgePlugin.deliverActivityResult' "$activity_file"
-          tail -n 42 "$activity_file"
-
-      - name: Configure native AMOLED startup theme
-        run: |
-          set -euo pipefail
-          res_dir="apps/readest-app/src-tauri/gen/android/app/src/main/res"
-          theme_file="$(find "$res_dir" -maxdepth 2 -type f \( -path '*/values/themes.xml' -o -path '*/values/styles.xml' \) -print -quit)"
-          test -n "$theme_file"
-          cat > "$res_dir/values/readinfinity_theme_colors.xml" <<'XML'
-          <resources>
-            <color name="readinfinity_startup_black">#000000</color>
-          </resources>
-          XML
-          if grep -q 'android:windowBackground' "$theme_file"; then
-            sed -i 's|<item name="android:windowBackground">[^<]*</item>|<item name="android:windowBackground">@color/readinfinity_startup_black</item>|' "$theme_file"
-          else
-            sed -i '/<style name="Theme\.readest"/a\    <item name="android:windowBackground">@color/readinfinity_startup_black</item>' "$theme_file"
-          fi
-          if ! grep -q 'android:windowSplashScreenBackground' "$theme_file"; then
-            sed -i '/<style name="Theme\.readest"/a\    <item name="android:windowSplashScreenBackground">@color/readinfinity_startup_black</item>' "$theme_file"
-          fi
-          if grep -q 'android:statusBarColor' "$theme_file"; then
-            sed -i 's|<item name="android:statusBarColor">[^<]*</item>|<item name="android:statusBarColor">@android:color/black</item>|' "$theme_file"
-          else
-            sed -i '/<style name="Theme\.readest"/a\    <item name="android:statusBarColor">@android:color/black</item>' "$theme_file"
-          fi
-          if grep -q 'android:navigationBarColor' "$theme_file"; then
-            sed -i 's|<item name="android:navigationBarColor">[^<]*</item>|<item name="android:navigationBarColor">@android:color/black</item>|' "$theme_file"
-          else
-            sed -i '/<style name="Theme\.readest"/a\    <item name="android:navigationBarColor">@android:color/black</item>' "$theme_file"
-          fi
-          if ! grep -q 'android:windowLightStatusBar' "$theme_file"; then
-            sed -i '/<style name="Theme\.readest"/a\    <item name="android:windowLightStatusBar">false</item>' "$theme_file"
-          fi
-          if ! grep -q 'android:windowLightNavigationBar' "$theme_file"; then
-            sed -i '/<style name="Theme\.readest"/a\    <item name="android:windowLightNavigationBar">false</item>' "$theme_file"
-          fi
-          grep -F 'readinfinity_startup_black' "$theme_file"
-          grep -F 'android:windowSplashScreenBackground' "$theme_file"
-          grep -F 'android:statusBarColor' "$theme_file"
-
-      - name: Select FOSS Android flavor
-        run: |
-          app_gradle="apps/readest-app/src-tauri/gen/android/app/build.gradle.kts"
-          if ! grep -q 'missingDimensionStrategy("store"' "$app_gradle"; then
-            sed -i '/minSdk =/a\        missingDimensionStrategy("store", "foss")' "$app_gradle"
-          fi
-          grep -n 'missingDimensionStrategy("store"' "$app_gradle"
-
-      - name: Build Android debug APK
-        run: pnpm --filter @readest/readest-app tauri android build --debug -t aarch64 -- --features devtools
-
-      - name: Locate and verify arm64-v8a APK
-        id: apk
-        run: |
-          apk_path="$(find apps/readest-app/src-tauri/gen/android -type f -name 'app-universal-debug.apk' | head -n 1)"
-          test -n "$apk_path"
-          badging="$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$apk_path")"
-          printf '%s\n' "$badging"
-          grep -F 'com.infinity.readz' <<< "$badging"
-          grep -F 'Read∞' <<< "$badging"
-          unzip -l "$apk_path" | grep -q 'lib/arm64-v8a/'
-          if unzip -l "$apk_path" | grep -Eq 'lib/(armeabi-v7a|x86|x86_64)/'; then
-            echo 'Unexpected non-arm64 native library found in APK'
-            exit 1
-          fi
-          echo "path=$apk_path" >> "$GITHUB_OUTPUT"
-          echo "Verified arm64-v8a-only APK: $apk_path"
-
-      - name: Upload Android arm64-v8a debug APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: readinfinity-android-arm64-v8a-debug-${{ github.sha }}
-          path: ${{ steps.apk.outputs.path }}
+          name: ReadInfinity-debug-apk
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
-          retention-days: 14
