@@ -16,20 +16,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch All Submodules Recursively
+      - name: Populate All Submodules and Plugins
         run: |
-          # Sync and force update all registered submodules
           git submodule sync --recursive || true
           git submodule update --init --recursive --force || true
 
-          # If tauri-plugin-turso submodule didn't clone, pull it directly
-          TURSO_DIR="apps/readest-app/src-tauri/plugins/tauri-plugin-turso"
-          if [ ! -f "$TURSO_DIR/Cargo.toml" ]; then
-            mkdir -p "$TURSO_DIR"
-            git clone --depth 1 https://github.com/daltonmenezes/tauri-plugin-turso.git "$TURSO_DIR" || true
-          fi
+          # Clone tauri-plugin-turso to wherever Cargo searches for it
+          for DIR in "src-tauri/plugins/tauri-plugin-turso" "apps/readest-app/src-tauri/plugins/tauri-plugin-turso"; do
+            if [ ! -f "$DIR/Cargo.toml" ]; then
+              mkdir -p "$DIR"
+              git clone --depth 1 https://github.com/daltonmenezes/tauri-plugin-turso.git "$DIR" || true
+            fi
+          done
 
-          # Ensure foliate-js exists for pnpm workspace
+          # Clone foliate-js for workspace dependencies
           mkdir -p packages/foliate-js
           if [ ! -f "packages/foliate-js/package.json" ]; then
             git clone --depth 1 https://github.com/johnfactotum/foliate-js.git packages/foliate-js || true
@@ -49,7 +49,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android Environment
+      - name: Setup Android SDK & NDK Environment
         run: |
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
@@ -77,12 +77,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          projectPath: ./apps/readest-app
           args: --target aarch64-linux-android --debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ReadInfinity-aarch64-debug
-          path: apps/readest-app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: |
+            src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+            apps/readest-app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
