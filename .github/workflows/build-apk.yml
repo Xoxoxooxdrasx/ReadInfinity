@@ -16,20 +16,36 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Sync and Initialize All Readest Submodules
+      - name: Fetch Submodules and Workspace Packages
         run: |
-          # Redirect relative submodule URLs to the official upstream readest organization
-          if [ -f ".gitmodules" ]; then
-            sed -i 's|url = \.\./|url = https://github.com/readest/|g' .gitmodules
-            sed -i 's|url = git@github.com:readest/|url = https://github.com/readest/|g' .gitmodules
-          fi
-          git submodule sync --recursive
-          git submodule update --init --recursive --force
+          # Globally map relative/SSH Readest dependencies to public HTTPS
+          git config --global url."https://github.com/readest/".insteadOf "git@github.com:readest/"
+          git config --global url."https://github.com/readest/".insteadOf "../"
+          
+          # Initialize all submodules using the rewrite
+          git submodule sync --recursive || true
+          git submodule update --init --recursive --force || true
 
-          # Fallback check: ensure packages/tauri exists if not covered by gitmodules
+          # Direct fallback: ensure foliate-js exists with its valid upstream code
+          if [ ! -f "packages/foliate-js/package.json" ]; then
+            rm -rf packages/foliate-js
+            git clone --depth 1 https://github.com/readest/foliate-js.git packages/foliate-js || true
+          fi
+
+          # Direct fallback: ensure packages/tauri exists
           if [ ! -f "packages/tauri/crates/tauri/Cargo.toml" ]; then
-            mkdir -p packages/tauri
+            rm -rf packages/tauri
             git clone --depth 1 https://github.com/readest/tauri.git packages/tauri || true
+          fi
+
+          # Direct fallback: ensure tauri plugins exist
+          PLUGINS_DIR="apps/readest-app/src-tauri/plugins"
+          mkdir -p "$PLUGINS_DIR"
+          if [ ! -f "$PLUGINS_DIR/tauri-plugin-turso/Cargo.toml" ]; then
+            git clone --depth 1 https://github.com/readest/tauri-plugin-turso.git "$PLUGINS_DIR/tauri-plugin-turso" || true
+          fi
+          if [ ! -f "$PLUGINS_DIR/tauri-plugin-webview-upgrade/Cargo.toml" ]; then
+            git clone --depth 1 https://github.com/readest/tauri-plugin-webview-upgrade.git "$PLUGINS_DIR/tauri-plugin-webview-upgrade" || true
           fi
 
       - name: Setup Java JDK 17
