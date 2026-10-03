@@ -42,17 +42,20 @@ jobs:
 
       - name: Clone Required Submodules Directly
         run: |
-          # 1. Clone official readest/foliate-js with custom APIs
+          # 1. Clone official readest/foliate-js
           rm -rf packages/foliate-js
           git clone --depth 1 https://github.com/readest/foliate-js.git packages/foliate-js
 
-          # 2. Clone official readest/tauri-plugin-turso
-          mkdir -p apps/readest-app/src-tauri/plugins/tauri-plugin-turso
-          git clone --depth 1 https://github.com/readest/tauri-plugin-turso.git apps/readest-app/src-tauri/plugins/tauri-plugin-turso || true
-
-          # 3. Clone official readest/js-mdict
+          # 2. Clone official readest/js-mdict
           mkdir -p packages/js-mdict
           git clone --depth 1 https://github.com/readest/js-mdict.git packages/js-mdict || true
+
+          # 3. Clone all Tauri plugins required by src-tauri
+          PLUGINS_DIR="apps/readest-app/src-tauri/plugins"
+          mkdir -p "$PLUGINS_DIR"
+          
+          git clone --depth 1 https://github.com/readest/tauri-plugin-turso.git "$PLUGINS_DIR/tauri-plugin-turso" || true
+          git clone --depth 1 https://github.com/readest/tauri-plugin-webview-upgrade.git "$PLUGINS_DIR/tauri-plugin-webview-upgrade" || true
 
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
