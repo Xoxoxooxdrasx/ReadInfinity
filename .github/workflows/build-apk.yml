@@ -14,12 +14,15 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
+          submodules: 'recursive'
           fetch-depth: 0
 
-      - name: Initialize Git Submodules
+      - name: Pull and Prepare Foliate
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive
+          # If foliate-js exists in packages, verify its package.json
+          ls -la packages/ || true
 
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
