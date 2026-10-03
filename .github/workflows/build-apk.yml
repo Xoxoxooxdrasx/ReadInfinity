@@ -8,7 +8,7 @@ on:
 jobs:
   build-apk:
     name: Build Tauri Android APK
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Source Code
@@ -17,18 +17,35 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Prepare Foliate Submodule
+        run: |
+          mkdir -p packages/foliate-js
+          if [ ! -f "packages/foliate-js/package.json" ]; then
+            git submodule update --init --recursive packages/foliate-js || true
+            if [ ! -f "packages/foliate-js/package.json" ]; then
+              git clone --depth 1 https://github.com/johnfactotum/foliate-js.git packages/foliate-js || true
+              cat << 'EOF' > packages/foliate-js/package.json
+          {
+            "name": "foliate-js",
+            "version": "0.1.0",
+            "private": true,
+            "main": "view.js"
+          }
+          EOF
+            fi
+          fi
+
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Install Android NDK & SDK Components
+      - name: Setup Android Environment
         run: |
-          SDKMANAGER=$(find $ANDROID_SDK_ROOT/cmdline-tools -name sdkmanager -type f | head -n 1)
-          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
-          "$SDKMANAGER" --install "ndk;26.1.10909125" "build-tools;34.0.0" "platforms;android-34"
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125" "build-tools;34.0.0" "platforms;android-34"
           echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
 
       - name: Setup Rust Toolchain
@@ -39,7 +56,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
 
       - name: Install pnpm
         run: npm install -g pnpm@9.15.4
@@ -47,14 +64,10 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build Internal Packages & Assets
-        run: |
-          # Build all workspace packages (WASM, plugins, Foliate vendor) before the app
-          pnpm -r --filter=!readest-app run build || true
-          pnpm run prepare || true
-
       - name: Build Next.js Static Assets
-        run: pnpm --filter readest-app build
+        run: |
+          pnpm run prebuild || true
+          pnpm --filter readest-app build || pnpm run build
 
       - name: Build Tauri APK
         uses: tauri-apps/tauri-action@v0
