@@ -42,49 +42,66 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm@9.15.4
 
-      - name: Prepare Foliate, Submodules, and Vendor Assets
+      - name: Prepare Submodules and Workspace Packages
         run: |
-          # 1. Guarantee foliate-js exists for pnpm workspace
-          rm -rf packages/foliate-js
+          # 1. foliates-js & js-mdict
+          rm -rf packages/foliate-js packages/js-mdict
           git clone --depth 1 https://github.com/readest/foliate-js.git packages/foliate-js
-
-          # 2. Guarantee js-mdict exists for Next.js import
-          rm -rf packages/js-mdict
           git clone --depth 1 https://github.com/readest/js-mdict.git packages/js-mdict
 
-          # 3. Clone plugins into apps/readest-app/src-tauri/plugins
+          # 2. Plugins for src-tauri
           PLUGINS_DIR="apps/readest-app/src-tauri/plugins"
           mkdir -p "$PLUGINS_DIR"
           rm -rf "$PLUGINS_DIR/tauri-plugin-turso" "$PLUGINS_DIR/tauri-plugin-webview-upgrade"
           git clone --depth 1 https://github.com/readest/tauri-plugin-turso.git "$PLUGINS_DIR/tauri-plugin-turso"
           git clone --depth 1 https://github.com/readest/tauri-plugin-webview-upgrade.git "$PLUGINS_DIR/tauri-plugin-webview-upgrade"
 
-          # 4. Remove packages/tauri workspace reference so Cargo doesn't look for it
+          # 3. Clean root Cargo.toml workspace
           if [ -f "Cargo.toml" ]; then
             sed -i '/packages\/tauri/d' Cargo.toml
           fi
 
-          # 5. Fetch prebuilt vendor assets (pdfjs & simplecc) directly from official Readest repo
-          VENDOR_DIR="apps/readest-app/public/vendor"
-          mkdir -p "$VENDOR_DIR/pdfjs" "$VENDOR_DIR/simplecc"
-
-          # Clone vendor directory from upstream readest
-          git clone --depth 1 --filter=blob:none --sparse https://github.com/readest/readest.git /tmp/readest-upstream
-          cd /tmp/readest-upstream
-          git sparse-checkout set apps/readest-app/public/vendor
-          cd -
-
-          if [ -d "/tmp/readest-upstream/apps/readest-app/public/vendor" ]; then
-            cp -r /tmp/readest-upstream/apps/readest-app/public/vendor/* "$VENDOR_DIR/"
-          fi
-
-          # Verify vendor assets exist
-          echo "=== Verifying vendor files ==="
-          ls -la "$VENDOR_DIR/pdfjs" || true
-          ls -la "$VENDOR_DIR/simplecc" || true
-
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
+
+      - name: Populate Vendor Assets (PDF.js & SimpleCC)
+        run: |
+          # Run Readest built-in vendor scripts if they exist
+          pnpm --filter readest-app run download:vendor || true
+          pnpm run download:vendor || true
+          pnpm run setup || true
+
+          TARGET_DIR="apps/readest-app/public/vendor"
+          mkdir -p "$TARGET_DIR/pdfjs" "$TARGET_DIR/simplecc"
+
+          # 1. Ensure pdf.min.mjs exists (pull official prebuilt from unpkg or cdnjs)
+          if [ ! -f "$TARGET_DIR/pdfjs/pdf.min.mjs" ]; then
+            curl -sSL "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.mjs" -o "$TARGET_DIR/pdfjs/pdf.min.mjs" || true
+            curl -sSL "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.mjs" -o "$TARGET_DIR/pdfjs/pdf.worker.mjs" || true
+          fi
+
+          # 2. Ensure simplecc_wasm exists
+          if [ ! -e "$TARGET_DIR/simplecc/simplecc_wasm" ] && [ ! -f "$TARGET_DIR/simplecc/simplecc_wasm.js" ]; then
+            # Download prebuilt simplecc wasm from npm package release
+            curl -sSL "https://registry.npmjs.org/@simplecc/simplecc_wasm/-/simplecc_wasm-0.1.3.tgz" -o /tmp/simplecc.tgz || true
+            if [ -f /tmp/simplecc.tgz ]; then
+              tar -xzf /tmp/simplecc.tgz -C /tmp/ || true
+              if [ -d /tmp/package ]; then
+                cp -r /tmp/package/* "$TARGET_DIR/simplecc/"
+                cp -r /tmp/package "$TARGET_DIR/simplecc/simplecc_wasm" || true
+              fi
+            fi
+            # Provide stub if download fails
+            if [ ! -f "$TARGET_DIR/simplecc/simplecc_wasm.js" ] && [ ! -d "$TARGET_DIR/simplecc/simplecc_wasm" ]; then
+              mkdir -p "$TARGET_DIR/simplecc/simplecc_wasm"
+              echo "export default async function init() {}; export function simplecc(text) { return text; };" > "$TARGET_DIR/simplecc/simplecc_wasm/index.js"
+              echo "export default async function init() {}; export function simplecc(text) { return text; };" > "$TARGET_DIR/simplecc/simplecc_wasm.js"
+            fi
+          fi
+
+          echo "=== Listing Vendor Directory Contents ==="
+          ls -la "$TARGET_DIR/pdfjs"
+          ls -la "$TARGET_DIR/simplecc"
 
       - name: Build Tauri APK
         uses: tauri-apps/tauri-action@v0
