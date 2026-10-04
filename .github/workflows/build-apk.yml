@@ -18,7 +18,6 @@ jobs:
 
       - name: Fetch Submodules and Workspace Packages
         run: |
-          # Map relative and SSH links to readest HTTPS
           git config --global url."https://github.com/readest/".insteadOf "git@github.com:readest/"
           git config --global url."https://github.com/readest/".insteadOf "../"
 
@@ -30,10 +29,16 @@ jobs:
           git submodule sync --recursive || true
           git submodule update --init --recursive --force || true
 
-          # Guarantee packages/tauri exists
-          if [ ! -f "packages/tauri/crates/tauri/Cargo.toml" ]; then
-            rm -rf packages/tauri
-            git clone --depth 1 https://github.com/readest/tauri.git packages/tauri || true
+          # Guarantee packages/tauri uses the recorded commit, not the latest branch HEAD
+          TAURI_HASH=$(git ls-files -s packages/tauri | awk '{print $2}')
+          if [ -n "$TAURI_HASH" ]; then
+            mkdir -p packages/tauri
+            cd packages/tauri
+            git init
+            git remote add origin https://github.com/readest/tauri.git || true
+            git fetch --depth 1 origin "$TAURI_HASH" || git fetch origin
+            git checkout "$TAURI_HASH" || true
+            cd ../..
           fi
 
           # Guarantee foliate-js exists
@@ -57,10 +62,6 @@ jobs:
           if [ ! -f "$PLUGINS_DIR/tauri-plugin-webview-upgrade/Cargo.toml" ]; then
             git clone --depth 1 https://github.com/readest/tauri-plugin-webview-upgrade.git "$PLUGINS_DIR/tauri-plugin-webview-upgrade" || true
           fi
-
-          # Debug check for cargo manifests
-          echo "Checking Cargo workspace members:"
-          ls -la packages/tauri/crates/tauri/Cargo.toml || echo "packages/tauri manifest missing"
 
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
