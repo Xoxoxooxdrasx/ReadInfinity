@@ -38,7 +38,7 @@ jobs:
           ln -sf "$TOOLCHAIN_BIN/aarch64-linux-android24-clang" "$TOOLCHAIN_BIN/aarch64-linux-android-clang"
           ln -sf "$TOOLCHAIN_BIN/aarch64-linux-android24-clang++" "$TOOLCHAIN_BIN/aarch64-linux-android-clang++"
           
-          # Export Android cross-compilation environment variables
+          # Export cross-compilation environment variables
           echo "CC_aarch64_linux_android=$TOOLCHAIN_BIN/aarch64-linux-android24-clang" >> $GITHUB_ENV
           echo "CXX_aarch64_linux_android=$TOOLCHAIN_BIN/aarch64-linux-android24-clang++" >> $GITHUB_ENV
           echo "AR_aarch64_linux_android=$TOOLCHAIN_BIN/llvm-ar" >> $GITHUB_ENV
@@ -95,7 +95,7 @@ jobs:
           curl -sSL "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.mjs" -o "$TARGET_DIR/pdfjs/pdf.min.mjs"
           curl -sSL "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.mjs" -o "$TARGET_DIR/pdfjs/pdf.worker.mjs"
 
-          # Neutralize dynamic Node / worker imports for browser Turbopack
+          # Neutralize dynamic Node / worker imports
           sed -i 's|import("canvas")|Promise.resolve({})|g' "$TARGET_DIR/pdfjs/pdf.min.mjs"
           sed -i 's|import("fs")|Promise.resolve({})|g' "$TARGET_DIR/pdfjs/pdf.min.mjs"
           sed -i 's|import("http")|Promise.resolve({})|g' "$TARGET_DIR/pdfjs/pdf.min.mjs"
@@ -135,13 +135,12 @@ jobs:
             }
           "
 
-      - name: Build Tauri APK
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          projectPath: ./apps/readest-app
-          args: --target aarch64-linux-android --debug
+      - name: Build Android APK
+        working-directory: apps/readest-app
+        run: |
+          # Use official Tauri v2 Android CLI command
+          pnpm tauri android init || true
+          pnpm tauri android build --debug --apk --target aarch64
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
