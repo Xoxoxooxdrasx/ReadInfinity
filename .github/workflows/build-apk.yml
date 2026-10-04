@@ -42,23 +42,46 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm@9.15.4
 
-      - name: Prepare Plugins and Foliate
+      - name: Prepare Foliate, Submodules, and Vendor Assets
         run: |
-          # Ensure foliate-js exists for pnpm workspace
+          # 1. Guarantee foliate-js exists for pnpm workspace
           rm -rf packages/foliate-js
           git clone --depth 1 https://github.com/readest/foliate-js.git packages/foliate-js
 
-          # Clone plugins into apps/readest-app/src-tauri/plugins
+          # 2. Guarantee js-mdict exists for Next.js import
+          rm -rf packages/js-mdict
+          git clone --depth 1 https://github.com/readest/js-mdict.git packages/js-mdict
+
+          # 3. Clone plugins into apps/readest-app/src-tauri/plugins
           PLUGINS_DIR="apps/readest-app/src-tauri/plugins"
           mkdir -p "$PLUGINS_DIR"
           rm -rf "$PLUGINS_DIR/tauri-plugin-turso" "$PLUGINS_DIR/tauri-plugin-webview-upgrade"
           git clone --depth 1 https://github.com/readest/tauri-plugin-turso.git "$PLUGINS_DIR/tauri-plugin-turso"
           git clone --depth 1 https://github.com/readest/tauri-plugin-webview-upgrade.git "$PLUGINS_DIR/tauri-plugin-webview-upgrade"
 
-          # Fix root Cargo.toml: remove references to packages/tauri so Cargo doesn't look for it
+          # 4. Remove packages/tauri workspace reference so Cargo doesn't look for it
           if [ -f "Cargo.toml" ]; then
             sed -i '/packages\/tauri/d' Cargo.toml
           fi
+
+          # 5. Fetch prebuilt vendor assets (pdfjs & simplecc) directly from official Readest repo
+          VENDOR_DIR="apps/readest-app/public/vendor"
+          mkdir -p "$VENDOR_DIR/pdfjs" "$VENDOR_DIR/simplecc"
+
+          # Clone vendor directory from upstream readest
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/readest/readest.git /tmp/readest-upstream
+          cd /tmp/readest-upstream
+          git sparse-checkout set apps/readest-app/public/vendor
+          cd -
+
+          if [ -d "/tmp/readest-upstream/apps/readest-app/public/vendor" ]; then
+            cp -r /tmp/readest-upstream/apps/readest-app/public/vendor/* "$VENDOR_DIR/"
+          fi
+
+          # Verify vendor assets exist
+          echo "=== Verifying vendor files ==="
+          ls -la "$VENDOR_DIR/pdfjs" || true
+          ls -la "$VENDOR_DIR/simplecc" || true
 
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
