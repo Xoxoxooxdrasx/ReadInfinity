@@ -42,7 +42,7 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm@9.15.4
 
-      - name: Prepare Submodules and Workspace Packages
+      - name: Prepare Submodules and Clean Workspace Patches
         run: |
           # 1. foliate-js & js-mdict
           rm -rf packages/foliate-js packages/js-mdict
@@ -56,9 +56,16 @@ jobs:
           git clone --depth 1 https://github.com/readest/tauri-plugin-turso.git "$PLUGINS_DIR/tauri-plugin-turso"
           git clone --depth 1 https://github.com/readest/tauri-plugin-webview-upgrade.git "$PLUGINS_DIR/tauri-plugin-webview-upgrade"
 
-          # 3. Clean root Cargo.toml workspace
+          # 3. Clean root Cargo.toml: remove packages/tauri workspace and local [patch.crates-io]
           if [ -f "Cargo.toml" ]; then
             sed -i '/packages\/tauri/d' Cargo.toml
+            # Comment out the local [patch.crates-io] section so Cargo doesn't look for local tao/tauri folders
+            node -e "
+              const fs = require('fs');
+              let content = fs.readFileSync('Cargo.toml', 'utf8');
+              content = content.replace(/\[patch\.crates-io\][\s\S]*?(?=\n\[|$)/, '# Local patches removed for CI build\n');
+              fs.writeFileSync('Cargo.toml', content);
+            "
           fi
 
       - name: Install Dependencies
@@ -97,22 +104,19 @@ jobs:
             fi
           fi
 
-      - name: Ignore TypeScript and Lint Errors in Next.js
+      - name: Ignore TypeScript Errors in Next.js
         run: |
           CONFIG_FILE="apps/readest-app/next.config.mjs"
           if [ ! -f "$CONFIG_FILE" ]; then
             CONFIG_FILE="apps/readest-app/next.config.js"
           fi
-          
-          # Inject typescript: { ignoreBuildErrors: true } and eslint: { ignoreDuringBuilds: true }
           node -e "
             const fs = require('fs');
             const file = '$CONFIG_FILE';
             if (fs.existsSync(file)) {
               let content = fs.readFileSync(file, 'utf8');
-              content = content.replace(/(const nextConfig\s*=\s*\{|nextConfig\s*=\s*\{)/, '\$1\n  typescript: { ignoreBuildErrors: true },\n  eslint: { ignoreDuringBuilds: true },');
+              content = content.replace(/(const nextConfig\s*=\s*\{|nextConfig\s*=\s*\{)/, '\$1\n  typescript: { ignoreBuildErrors: true },');
               fs.writeFileSync(file, content);
-              console.log('Successfully patched next.config to ignore type errors.');
             }
           "
 
@@ -128,5 +132,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ReadInfinity-aarch64-debug
-          path: apps/readest-app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: |
+            apps/readest-app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+            src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
