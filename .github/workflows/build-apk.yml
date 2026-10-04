@@ -42,9 +42,9 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm@9.15.4
 
-      - name: Prepare Foliate and Plugins
+      - name: Prepare Plugins and Foliate
         run: |
-          # Ensure packages/foliate-js exists so pnpm workspace passes
+          # Ensure foliate-js exists for pnpm workspace
           rm -rf packages/foliate-js
           git clone --depth 1 https://github.com/readest/foliate-js.git packages/foliate-js
 
@@ -55,8 +55,10 @@ jobs:
           git clone --depth 1 https://github.com/readest/tauri-plugin-turso.git "$PLUGINS_DIR/tauri-plugin-turso"
           git clone --depth 1 https://github.com/readest/tauri-plugin-webview-upgrade.git "$PLUGINS_DIR/tauri-plugin-webview-upgrade"
 
-          # Remove conflicting packages/tauri clone if present
-          rm -rf packages/tauri
+          # Fix root Cargo.toml: remove references to packages/tauri so Cargo doesn't look for it
+          if [ -f "Cargo.toml" ]; then
+            sed -i '/packages\/tauri/d' Cargo.toml
+          fi
 
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
