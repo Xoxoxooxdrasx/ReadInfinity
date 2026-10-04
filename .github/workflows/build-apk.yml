@@ -16,41 +16,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Readest Submodules & Crate Manifests
-        run: |
-          # 1. Direct clone readest/tauri with full history to guarantee crates/tauri exists
-          rm -rf packages/tauri
-          git clone --depth 50 https://github.com/readest/tauri.git packages/tauri
-          # If the default branch didn't have the crates folder, check out the readest branch
-          if [ ! -f "packages/tauri/crates/tauri/Cargo.toml" ]; then
-            cd packages/tauri
-            git branch -r
-            git checkout $(git branch -r | grep -E 'v2|readest|app' | head -n 1 | tr -d ' ') || true
-            cd ../..
-          fi
-
-          # 2. Clone readest/foliate-js for pnpm workspace
-          rm -rf packages/foliate-js
-          git clone --depth 1 https://github.com/readest/foliate-js.git packages/foliate-js
-
-          # 3. Clone readest/js-mdict
-          rm -rf packages/js-mdict
-          git clone --depth 1 https://github.com/readest/js-mdict.git packages/js-mdict || true
-
-          # 4. Clone plugins for src-tauri
-          PLUGINS_DIR="apps/readest-app/src-tauri/plugins"
-          mkdir -p "$PLUGINS_DIR"
-          rm -rf "$PLUGINS_DIR/tauri-plugin-turso" "$PLUGINS_DIR/tauri-plugin-webview-upgrade"
-          git clone --depth 1 https://github.com/readest/tauri-plugin-turso.git "$PLUGINS_DIR/tauri-plugin-turso"
-          git clone --depth 1 https://github.com/readest/tauri-plugin-webview-upgrade.git "$PLUGINS_DIR/tauri-plugin-webview-upgrade"
-
-          # 5. STRICT VERIFICATION: Verify Cargo.toml manifests exist
-          echo "=== Verifying Cargo workspace files ==="
-          test -f packages/tauri/crates/tauri/Cargo.toml || { echo "CRITICAL: packages/tauri/crates/tauri/Cargo.toml missing!"; ls -la packages/tauri; exit 1; }
-          test -f "$PLUGINS_DIR/tauri-plugin-turso/Cargo.toml" || { echo "CRITICAL: turso Cargo.toml missing!"; exit 1; }
-          test -f "$PLUGINS_DIR/tauri-plugin-webview-upgrade/Cargo.toml" || { echo "CRITICAL: webview-upgrade Cargo.toml missing!"; exit 1; }
-          echo "All manifests verified successfully!"
-
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
         with:
@@ -77,6 +42,22 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm@9.15.4
 
+      - name: Prepare Foliate and Plugins
+        run: |
+          # Ensure packages/foliate-js exists so pnpm workspace passes
+          rm -rf packages/foliate-js
+          git clone --depth 1 https://github.com/readest/foliate-js.git packages/foliate-js
+
+          # Clone plugins into apps/readest-app/src-tauri/plugins
+          PLUGINS_DIR="apps/readest-app/src-tauri/plugins"
+          mkdir -p "$PLUGINS_DIR"
+          rm -rf "$PLUGINS_DIR/tauri-plugin-turso" "$PLUGINS_DIR/tauri-plugin-webview-upgrade"
+          git clone --depth 1 https://github.com/readest/tauri-plugin-turso.git "$PLUGINS_DIR/tauri-plugin-turso"
+          git clone --depth 1 https://github.com/readest/tauri-plugin-webview-upgrade.git "$PLUGINS_DIR/tauri-plugin-webview-upgrade"
+
+          # Remove conflicting packages/tauri clone if present
+          rm -rf packages/tauri
+
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
 
@@ -85,13 +66,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          projectPath: ./apps/readest-app
           args: --target aarch64-linux-android --debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ReadInfinity-aarch64-debug
-          path: |
-            src-tauri/gen/android/app/build/outputs/apk/**/*.apk
-            apps/readest-app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: apps/readest-app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
