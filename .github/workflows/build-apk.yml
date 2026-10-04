@@ -138,8 +138,25 @@ jobs:
       - name: Build Android APK
         working-directory: apps/readest-app
         run: |
-          # Use official Tauri v2 Android CLI command
+          # 1. Initialize Android project templates
           pnpm tauri android init || true
+
+          # 2. Configure missingDimensionStrategy for "store" flavor (foss vs googleplay)
+          GEN_DIR="src-tauri/gen/android/app"
+          
+          # Handle Kotlin build script (build.gradle.kts)
+          if [ -f "$GEN_DIR/build.gradle.kts" ]; then
+            sed -i '/defaultConfig\s*{/a \        missingDimensionStrategy("store", "foss")' "$GEN_DIR/build.gradle.kts"
+            echo "Injected missingDimensionStrategy into build.gradle.kts"
+          fi
+
+          # Handle Groovy build script (build.gradle)
+          if [ -f "$GEN_DIR/build.gradle" ]; then
+            sed -i "/defaultConfig\s*{/a \        missingDimensionStrategy 'store', 'foss'" "$GEN_DIR/build.gradle"
+            echo "Injected missingDimensionStrategy into build.gradle"
+          fi
+
+          # 3. Build APK
           pnpm tauri android build --debug --apk --target aarch64
 
       - name: Upload APK Artifact
