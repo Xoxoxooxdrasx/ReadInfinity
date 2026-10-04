@@ -69,18 +69,20 @@ jobs:
           TARGET_DIR="apps/readest-app/public/vendor"
           mkdir -p "$TARGET_DIR/pdfjs" "$TARGET_DIR/simplecc"
 
-          # Fetch PDF.js
+          # 1. Fetch PDF.js & worker
           curl -sSL "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.mjs" -o "$TARGET_DIR/pdfjs/pdf.min.mjs"
           curl -sSL "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.mjs" -o "$TARGET_DIR/pdfjs/pdf.worker.mjs"
 
-          # Patch out Node-only dynamic imports in pdf.min.mjs that break Turbopack client builds
+          # 2. Patch out dynamic Node and variable imports so Turbopack bundles cleanly
           sed -i 's|import("canvas")|Promise.resolve({})|g' "$TARGET_DIR/pdfjs/pdf.min.mjs"
           sed -i 's|import("fs")|Promise.resolve({})|g' "$TARGET_DIR/pdfjs/pdf.min.mjs"
           sed -i 's|import("http")|Promise.resolve({})|g' "$TARGET_DIR/pdfjs/pdf.min.mjs"
           sed -i 's|import("https")|Promise.resolve({})|g' "$TARGET_DIR/pdfjs/pdf.min.mjs"
           sed -i 's|import("path2d")|Promise.resolve({})|g' "$TARGET_DIR/pdfjs/pdf.min.mjs"
+          # Neutralize dynamic worker import: replace import(this.workerSrc) with standard Promise return
+          sed -i 's|import(this\.workerSrc)|Promise.resolve({})|g' "$TARGET_DIR/pdfjs/pdf.min.mjs"
 
-          # Fetch simplecc WASM
+          # 3. Fetch simplecc WASM
           if [ ! -f "$TARGET_DIR/simplecc/simplecc_wasm.js" ] && [ ! -d "$TARGET_DIR/simplecc/simplecc_wasm" ]; then
             curl -sSL "https://registry.npmjs.org/@simplecc/simplecc_wasm/-/simplecc_wasm-0.1.3.tgz" -o /tmp/simplecc.tgz || true
             if [ -f /tmp/simplecc.tgz ]; then
